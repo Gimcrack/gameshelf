@@ -32,6 +32,7 @@ Source: `design-doc.md` v0.1.
 - api: `POST /api/connections` {platform: steam|gog} → OAuth/connect flow
 - api: `POST /api/connections/:id/sync` → 202, dispatch sync job
 - api: `GET /api/connections` → [{platform, last_synced_at, status}]
+- api: `DELETE /api/connections/:id` → 200 soft disconnect: status → disconnected, owned_games kept (V13). Added T5.
 - api: `GET /api/library` → deduped games, owned-on platforms per game; sort: alpha|playtime|last_played|added; filter: platform|genre|status|tags|playtime range
 - api: `GET/POST /api/collections` → saved filter presets; system defaults: Unplayed (playtime=0), Abandoned (played, untouched 6+ mo, ≠finished), Quick wins (est completion < 5 hrs ? metadata)
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
