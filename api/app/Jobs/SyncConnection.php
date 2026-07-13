@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\ConnectionStatus;
 use App\Models\PlatformConnection;
+use App\Services\Igdb\GameMatcher;
 use App\Services\Steam\SteamSyncer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -39,6 +40,22 @@ class SyncConnection implements ShouldQueue
             $connection->update(['status' => ConnectionStatus::Error]);
 
             throw $e;
+        }
+
+        if ($connection->refresh()->status === ConnectionStatus::Ok) {
+            $this->matchGames($connection);
+        }
+    }
+
+    /**
+     * IGDB matching is enrichment — its failure never fails the sync (V11).
+     */
+    private function matchGames(PlatformConnection $connection): void
+    {
+        try {
+            app(GameMatcher::class)->matchConnection($connection);
+        } catch (\Throwable $e) {
+            report($e);
         }
     }
 }

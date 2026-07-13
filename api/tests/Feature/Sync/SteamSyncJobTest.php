@@ -23,6 +23,13 @@ class SteamSyncJobTest extends TestCase
                     'games' => $games,
                 ],
             ]),
+            // IGDB enrichment runs after ingestion; these tests exercise raw
+            // ingestion only, so every match is a miss.
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
         ]);
     }
 
@@ -115,6 +122,11 @@ class SteamSyncJobTest extends TestCase
                     ],
                 ])
                 ->push(['response' => (object) []]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
         ]);
         $connection = $this->steamConnection();
 
