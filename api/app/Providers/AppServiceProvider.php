@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Steam\SteamClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,7 +15,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(SteamClient::class, function () {
+            return new SteamClient((string) config('services.steam.key'));
+        });
     }
 
     /**

@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Enums\ConnectionStatus;
+use App\Models\PlatformConnection;
+use App\Services\Steam\SteamSyncer;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+class SyncConnection implements ShouldQueue
+{
+    use Queueable;
+
+    public function __construct(public readonly int $connectionId)
+    {
+    }
+
+    /**
+     * V8: all sync work happens here, off the request cycle.
+     */
+    public function handle(): void
+    {
+        $connection = PlatformConnection::find($this->connectionId);
+
+        if ($connection === null || $connection->status === ConnectionStatus::Disconnected) {
+            return;
+        }
+
+        $connection->update(['status' => ConnectionStatus::Syncing]);
+
+        try {
+            match ($connection->platform) {
+                'steam' => app(SteamSyncer::class)->sync($connection),
+                default => throw new \RuntimeException("Unsupported platform: {$connection->platform}"),
+            };
+        } catch (\Throwable $e) {
+            // V9: surface failure on the connection, then rethrow for queue retry.
+            $connection->update(['status' => ConnectionStatus::Error]);
+
+            throw $e;
+        }
+    }
+}
