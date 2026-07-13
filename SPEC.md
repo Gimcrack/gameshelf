@@ -73,7 +73,7 @@ T1|x|Laravel API skeleton + Sanctum auth + email/password accounts|V3
 T2|x|Nuxt skeleton + auth flow → Sanctum|V3
 T3|x|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshots|V2,V5,V8,V9,V10,V15,V16,I.steam
 T4|x|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,I.igdb
-T5|.|unified library UI: grid, filters, sort, disconnect badges|V1,V12,V13,I.api
+T5|x|unified library UI: grid, filters, sort, disconnect badges|V1,V12,V13,I.api
 T6|.|GOG connect + token refresh + sync — validates multi-platform dedupe|V1,V2,V8,V10,V14,I.gog
 T7|.|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
 T8|.|backlog stats view + shareable card — burn-down from snapshots|V16,I.api

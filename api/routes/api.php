@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Connections\ConnectionController;
+use App\Http\Controllers\Library\LibraryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +21,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/connections', [ConnectionController::class, 'index']);
     Route::post('/connections', [ConnectionController::class, 'store']);
     Route::post('/connections/{connection}/sync', [ConnectionController::class, 'sync']);
+    Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
+
+    Route::get('/library', [LibraryController::class, 'index']);
 });

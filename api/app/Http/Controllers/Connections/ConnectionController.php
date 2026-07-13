@@ -68,4 +68,17 @@ class ConnectionController extends Controller
             'message' => 'Sync queued.',
         ], Response::HTTP_ACCEPTED);
     }
+
+    /**
+     * V13: disconnect is soft — owned games persist for reconnect; only the
+     * status flips. Nothing is deleted.
+     */
+    public function destroy(Request $request, PlatformConnection $connection): JsonResponse
+    {
+        abort_unless($connection->user_id === $request->user()->id, Response::HTTP_NOT_FOUND);
+
+        $connection->update(['status' => ConnectionStatus::Disconnected]);
+
+        return response()->json($connection->fresh());
+    }
 }
