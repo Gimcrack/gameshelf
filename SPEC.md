@@ -69,7 +69,7 @@ V16: ∀ sync → append `playtime_snapshots` row per owned_game with playtime d
 ## §T tasks
 
 id|status|task|cites
-T1|.|Laravel API skeleton + Sanctum auth + email/password accounts|V3
+T1|x|Laravel API skeleton + Sanctum auth + email/password accounts|V3
 T2|.|Nuxt skeleton + auth flow → Sanctum|V3
 T3|.|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshots|V2,V5,V8,V9,V10,V15,V16,I.steam
 T4|.|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,I.igdb
