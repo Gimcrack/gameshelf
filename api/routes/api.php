@@ -4,6 +4,7 @@ use App\Http\Controllers\Account\AccountController;
 use App\Http\Controllers\Account\TokenController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Connections\ConnectionController;
+use App\Http\Controllers\Discover\DiscoverController;
 use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\LibraryController;
@@ -45,6 +46,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/collections', [CollectionController::class, 'store']);
 
     Route::get('/stats/backlog', [StatsController::class, 'backlog']);
+
+    Route::get('/discover/search', [DiscoverController::class, 'search']);
+    Route::get('/discover/browse', [DiscoverController::class, 'browse']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);

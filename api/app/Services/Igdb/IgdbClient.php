@@ -14,6 +14,17 @@ class IgdbClient
 
     private const EXTERNAL_GAMES_URL = 'https://api.igdb.com/v4/external_games';
 
+    private const GENRES_URL = 'https://api.igdb.com/v4/genres';
+
+    private const DISCOVER_FIELDS = 'name,cover.url,genres.name,first_release_date,total_rating';
+
+    /** §I discover browse sort vocabulary → IGDB order clauses. */
+    private const BROWSE_SORTS = [
+        'rating' => 'total_rating desc',
+        'release' => 'first_release_date desc',
+        'popularity' => 'total_rating_count desc',
+    ];
+
     /** external_games.category values (I.igdb external mapping). */
     public const EXTERNAL_STEAM = 1;
 
@@ -58,6 +69,102 @@ class IgdbClient
         }
 
         return $this->bestCandidate($title, $results);
+    }
+
+    /**
+     * Multi-hit title search for the discover proxy (§C.discovery).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function searchGames(string $q, int $limit = 20): array
+    {
+        $this->throttle();
+
+        $query = sprintf(
+            'search "%s"; fields %s; limit %d;',
+            str_replace('"', '\"', $q),
+            self::DISCOVER_FIELDS,
+            $limit,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $results = $response->json();
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Catalogue page for the discover proxy. Sort field is guarded non-null
+     * so IGDB doesn't float unrated/undated records to the top.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function browseGames(?int $genreId, string $sort, int $page, int $perPage = 20): array
+    {
+        $this->throttle();
+
+        $order = self::BROWSE_SORTS[$sort]
+            ?? throw new RuntimeException("Unknown browse sort: {$sort}");
+        $sortField = explode(' ', $order)[0];
+
+        $where = ["{$sortField} != null"];
+
+        if ($genreId !== null) {
+            $where[] = "genres = {$genreId}";
+        }
+
+        $query = sprintf(
+            'fields %s; where %s; sort %s; limit %d; offset %d;',
+            self::DISCOVER_FIELDS,
+            implode(' & ', $where),
+            $order,
+            $perPage,
+            ($page - 1) * $perPage,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $results = $response->json();
+
+        return is_array($results) ? $results : [];
+    }
+
+    /**
+     * Full IGDB genre list (id + name) for browse genre filtering.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function genres(): array
+    {
+        $this->throttle();
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody('fields name; limit 100;', 'text/plain')->post(self::GENRES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB genres request failed: '.$response->status());
+        }
+
+        $results = $response->json();
+
+        return is_array($results) ? $results : [];
     }
 
     /**

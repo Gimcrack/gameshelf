@@ -54,6 +54,7 @@ async function onLogout(): Promise<void> {
         Game<span class="text-teal-400">Shelf</span>
       </h1>
       <div v-if="user" class="flex items-center gap-3">
+        <NuxtLink to="/discover" class="text-sm text-teal-400 hover:text-teal-300">Discover</NuxtLink>
         <NuxtLink to="/wishlist" class="text-sm text-teal-400 hover:text-teal-300">Wishlist</NuxtLink>
         <NuxtLink to="/stats" class="text-sm text-teal-400 hover:text-teal-300">Stats</NuxtLink>
         <NuxtLink to="/profile" class="text-sm text-teal-400 hover:text-teal-300">Profile</NuxtLink>
