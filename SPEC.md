@@ -9,7 +9,7 @@ Source: `design-doc.md` v0.1.
 ## §C constraints
 
 - Backend: Laravel 11+, Sanctum stateless token auth.
-- Frontend: Nuxt 3 (Vue), JSON over HTTPS.
+- Frontend: Nuxt 4 (Vue), JSON over HTTPS. Was Nuxt 3 → upgrade T10.
 - DB: MySQL (Eloquent). tags[]/genres[] → JSON columns | pivot tables.
 - Queue: Laravel Queue, Redis driver (Redis already in stack) + Scheduler. Daily per-user sync & on-demand "sync now".
 - "sync now" throttled per connection (≥5 min gap) + API rate limiting (Sanctum throttle).
@@ -25,7 +25,7 @@ Source: `design-doc.md` v0.1.
 - "Quick wins" conditional: IGDB time-to-beat where present; games w/o data excluded from collection.
 - Auth: own accounts — email/password + Sanctum tokens. Steam OpenID ⊥ identity (connection only).
 - Hosting: Laravel Forge + single VPS (API, queue, Redis, DB). Nuxt SPA static via same box | CDN.
-- Nuxt mode: SPA (`ssr: false`). All views behind auth, no SEO need.
+- Nuxt mode: SPA (`ssr: false`). All views behind auth, no SEO need. Holds in Nuxt 4 — upgrade ⊥ drop `ssr: false`.
 
 ## §I interfaces
 
@@ -79,6 +79,7 @@ T6|.|GOG connect + token refresh + sync — validates multi-platform dedupe|V1,V
 T7|.|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
 T8|.|backlog stats view + shareable card — burn-down from snapshots|V16,I.api
 T9|.|(stretch) iOS client vs existing Sanctum API|V3
+T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), compat fixes; keep `ssr: false`; auth flow + library UI ⊥ regress|V3,§C.nuxt-mode
 
 ## §B bugs
 
