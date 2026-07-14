@@ -42,74 +42,48 @@ async function onSubmit(): Promise<void> {
 </script>
 
 <template>
-  <main class="auth-page">
-    <h1>Create account</h1>
+  <main class="mx-auto mt-16 max-w-sm rounded-xl border border-slate-800 bg-slate-900 p-8">
+    <h1 class="mb-6 text-xl font-bold tracking-tight">
+      Join Game<span class="text-teal-400">Shelf</span>
+    </h1>
     <form novalidate @submit.prevent="onSubmit">
-      <label>
+      <label class="mb-1 block text-sm text-slate-300">
         Email
-        <input v-model="email" type="email" autocomplete="email" />
+        <input
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          class="mb-2 mt-1 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-teal-400 focus:outline-none"
+        />
       </label>
-      <p v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email[0] }}</p>
+      <p v-if="fieldErrors.email" class="mb-2 text-sm text-rose-400">{{ fieldErrors.email[0] }}</p>
 
-      <label>
+      <label class="mb-1 block text-sm text-slate-300">
         Password
-        <input v-model="password" type="password" autocomplete="new-password" />
+        <input
+          v-model="password"
+          type="password"
+          autocomplete="new-password"
+          class="mb-2 mt-1 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:border-teal-400 focus:outline-none"
+        />
       </label>
-      <p v-if="fieldErrors.password" class="field-error">{{ fieldErrors.password[0] }}</p>
+      <p v-if="fieldErrors.password" class="mb-2 text-sm text-rose-400">
+        {{ fieldErrors.password[0] }}
+      </p>
 
-      <p v-if="formError" class="form-error">{{ formError }}</p>
+      <p v-if="formError" class="mb-2 text-sm text-rose-400">{{ formError }}</p>
 
-      <button type="submit" :disabled="isSubmitting">
+      <button
+        type="submit"
+        :disabled="isSubmitting"
+        class="mt-2 w-full rounded-md bg-teal-500 px-4 py-2 font-semibold text-slate-950 transition hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+      >
         {{ isSubmitting ? 'Creating account…' : 'Create account' }}
       </button>
     </form>
-    <p class="switch-link">
-      Already have an account? <NuxtLink to="/login">Log in</NuxtLink>
+    <p class="mt-6 text-center text-sm text-slate-400">
+      Already have an account?
+      <NuxtLink to="/login" class="text-teal-400 hover:text-teal-300">Log in</NuxtLink>
     </p>
   </main>
 </template>
-
-<style scoped>
-.auth-page {
-  max-width: 360px;
-  margin: 4rem auto;
-  padding: 2rem;
-  font-family: system-ui, sans-serif;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.25rem;
-  font-size: 0.9rem;
-}
-
-input {
-  display: block;
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  box-sizing: border-box;
-  font-size: 1rem;
-}
-
-button {
-  width: 100%;
-  padding: 0.6rem;
-  margin-top: 0.5rem;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.field-error,
-.form-error {
-  color: #c0392b;
-  font-size: 0.85rem;
-  margin: 0 0 0.5rem;
-}
-
-.switch-link {
-  margin-top: 1.5rem;
-  font-size: 0.9rem;
-  text-align: center;
-}
-</style>

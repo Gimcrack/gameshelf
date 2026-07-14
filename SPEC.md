@@ -10,6 +10,8 @@ Source: `design-doc.md` v0.1.
 
 - Backend: Laravel 11+, Sanctum stateless token auth.
 - Frontend: Nuxt 4 (Vue), JSON over HTTPS. Was Nuxt 3 → upgrade T10.
+- Styling: Tailwind CSS. Added amend 2026-07-13 → T11.
+- Theme: dark only, ∀ views. Slate base + teal accent motif. ⊥ light mode v1.
 - DB: MySQL (Eloquent). tags[]/genres[] → JSON columns | pivot tables.
 - Queue: Laravel Queue, Redis driver (Redis already in stack) + Scheduler. Daily per-user sync & on-demand "sync now".
 - "sync now" throttled per connection (≥5 min gap) + API rate limiting (Sanctum throttle).
@@ -81,6 +83,7 @@ T7|.|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
 T8|.|backlog stats view + shareable card — burn-down from snapshots|V16,I.api
 T9|.|(stretch) iOS client vs existing Sanctum API|V3
 T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), compat fixes; keep `ssr: false`; auth flow + library UI ⊥ regress|V3,§C.nuxt-mode
+T11|x|adopt Tailwind CSS in web/; restyle ∀ views dark slate + teal (login, register, library grid, GameCard, badges)|§C.styling,§C.theme
 
 ## §B bugs
 

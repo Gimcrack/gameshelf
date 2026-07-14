@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/*
+ * SPEC §C.theme: dark only, slate base + teal accent.
+ * Tailwind's built-in slate/teal scales are the palette; this layer only
+ * sets the global dark shell and form-control defaults utilities can't reach.
+ */
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 antialiased;
+  }
+
+  ::selection {
+    @apply bg-teal-500/30 text-teal-100;
+  }
+}

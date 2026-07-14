@@ -41,135 +41,88 @@ async function onLogout(): Promise<void> {
 </script>
 
 <template>
-  <main class="library">
-    <header class="library-header">
-      <h1>GameShelf</h1>
-      <div v-if="user" class="user-bar">
-        <span class="user-email">{{ user.email }}</span>
-        <button :disabled="isLoggingOut" @click="onLogout">
+  <main class="mx-auto max-w-6xl px-6 py-8">
+    <header
+      class="mb-6 flex items-center justify-between border-b border-slate-800 pb-4"
+    >
+      <h1 class="text-2xl font-bold tracking-tight">
+        Game<span class="text-teal-400">Shelf</span>
+      </h1>
+      <div v-if="user" class="flex items-center gap-3">
+        <span class="text-sm text-slate-400">{{ user.email }}</span>
+        <button
+          :disabled="isLoggingOut"
+          class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="onLogout"
+        >
           {{ isLoggingOut ? 'Logging out…' : 'Log out' }}
         </button>
       </div>
     </header>
 
-    <section class="controls">
-      <label>
+    <section class="mb-6 flex flex-wrap items-end gap-4 text-sm text-slate-400">
+      <label class="flex flex-col gap-1">
         Sort
-        <select v-model="sort">
+        <select
+          v-model="sort"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
+        >
           <option value="alpha">Title</option>
           <option value="playtime">Playtime</option>
           <option value="last_played">Last played</option>
           <option value="added">Date added</option>
         </select>
       </label>
-      <label>
+      <label class="flex flex-col gap-1">
         Order
-        <select v-model="order">
+        <select
+          v-model="order"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
+        >
           <option value="asc">Ascending</option>
           <option value="desc">Descending</option>
         </select>
       </label>
-      <label>
+      <label class="flex flex-col gap-1">
         Platform
-        <select v-model="platform">
+        <select
+          v-model="platform"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
+        >
           <option value="">All</option>
           <option value="steam">Steam</option>
           <option value="gog">GOG</option>
         </select>
       </label>
-      <label>
+      <label class="flex flex-col gap-1">
         Genre
-        <input v-model="genre" type="text" placeholder="e.g. Puzzle" />
+        <input
+          v-model="genre"
+          type="text"
+          placeholder="e.g. Puzzle"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+        />
       </label>
-      <label class="checkbox">
-        <input v-model="unplayed" type="checkbox" />
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="unplayed" type="checkbox" class="accent-teal-500" />
         Unplayed only
       </label>
     </section>
 
-    <section class="library-body">
-      <p v-if="error" class="error">{{ error }}</p>
-      <p v-else-if="pending && entries.length === 0">Loading library…</p>
-      <p v-else-if="entries.length === 0">
+    <section>
+      <p v-if="error" class="text-rose-400">{{ error }}</p>
+      <p v-else-if="pending && entries.length === 0" class="text-slate-400">
+        Loading library…
+      </p>
+      <p v-else-if="entries.length === 0" class="text-slate-400">
         Your library is empty. Connect a platform to import your games.
       </p>
-      <div v-else class="grid">
+      <div
+        v-else
+        class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"
+      >
         <GameCard v-for="entry in entries" :key="entry.id" :entry="entry" />
       </div>
     </section>
   </main>
 </template>
-
-<style scoped>
-.library {
-  max-width: 1080px;
-  margin: 2rem auto;
-  padding: 1.5rem;
-  font-family: system-ui, sans-serif;
-}
-
-.library-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-}
-
-.user-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.user-email {
-  font-size: 0.9rem;
-  color: #555;
-}
-
-button {
-  padding: 0.4rem 0.8rem;
-  cursor: pointer;
-}
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: end;
-  margin-bottom: 1.25rem;
-  font-size: 0.85rem;
-  color: #444;
-}
-
-.controls label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.controls label.checkbox {
-  flex-direction: row;
-  align-items: center;
-}
-
-.controls select,
-.controls input[type='text'] {
-  padding: 0.3rem 0.4rem;
-}
-
-.library-body {
-  color: #555;
-}
-
-.error {
-  color: #a33;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 1rem;
-}
-</style>
