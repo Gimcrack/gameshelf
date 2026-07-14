@@ -2,12 +2,15 @@
 import {
   formatPlaytime,
   hasDisconnectedPlatform,
+  hasManualEntry,
   type LibraryEntry
 } from '../utils/library'
 
 const props = defineProps<{ entry: LibraryEntry }>()
+const emit = defineEmits<{ (e: 'remove-manual', gameId: number): void }>()
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
+const manual = computed(() => hasManualEntry(props.entry))
 const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_minutes))
 </script>
 
@@ -47,6 +50,13 @@ const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_m
         </li>
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
+      <button
+        v-if="manual"
+        class="mt-1.5 rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
+        @click="emit('remove-manual', entry.id)"
+      >
+        Remove from library
+      </button>
     </div>
   </article>
 </template>

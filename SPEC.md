@@ -112,7 +112,7 @@ T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), com
 T11|x|adopt Tailwind CSS in web/; restyle ∀ views dark slate + teal (login, register, library grid, GameCard, badges)|§C.styling,§C.theme
 T12|x|landing marketing page `/welcome`: hero, feature pitch (connect→dedupe→triage backlog), CTA → register/login; public route in auth.global; guests hitting `/` → `/welcome`|§C.landing,§C.theme
 T13|x|profile page `/profile`: account section (email/password change vs current_password), connected services (list + connect steam/gog + sync now + disconnect vs existing I.api), API keys (list/create w/ once-shown plaintext/revoke)|V2,V13,V17,V18,I.api,§C.theme
-T14|.|manual add: `manual` platform enum + synthetic connection, POST /api/library {igdb_id}, manual delete, library UI add/remove affordances|V1,V7,V10,V19,I.api
+T14|x|manual add: `manual` platform enum + synthetic connection, POST /api/library {igdb_id}, manual delete, library UI add/remove affordances|V1,V7,V10,V19,I.api
 T15|.|discover: /api/discover search+browse (IGDB proxy, Redis cache, in_library overlay), FE /discover page — search bar, browse grid w/ genre/sort, add-to-library button|V4,V19,V20,I.igdb,§C.discovery,§C.theme
 T16|.|similar-games rails: seeds from top owned, IGDB similar_games cached, "Because you played X" sections on /discover|V4,V20,§C.discovery
 T17|.|wishlist core: wishlist_items table, GET/POST/DELETE /api/wishlist (games created from igdb_id via shared GameFromIgdb service), in_wishlist overlay, wishlist page + promote-to-owned flow|V7,V20,V21,I.api

@@ -6,7 +6,6 @@ use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\PlatformConnection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Date;
 
 class GameMatcher
 {
@@ -78,16 +77,7 @@ class GameMatcher
         }
 
         $provisional->update([
-            'igdb_id' => $igdb['id'],
-            'title' => $igdb['name'],
-            'cover_url' => $igdb['cover']['url'] ?? null,
-            'genres' => array_map(
-                fn (array $genre) => $genre['name'],
-                $igdb['genres'] ?? [],
-            ),
-            'release_date' => isset($igdb['first_release_date'])
-                ? Date::createFromTimestamp($igdb['first_release_date'])->toDateString()
-                : null,
+            ...IgdbGameAttributes::fromRecord($igdb),
             'time_to_beat_minutes' => $this->timeToBeat((int) $igdb['id']),
         ]);
     }

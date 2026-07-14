@@ -3,6 +3,7 @@ import {
   buildLibraryQuery,
   formatPlaytime,
   hasDisconnectedPlatform,
+  hasManualEntry,
   type LibraryEntry
 } from '../../app/utils/library'
 
@@ -87,5 +88,24 @@ describe('hasDisconnectedPlatform', () => {
       ]
     })
     expect(hasDisconnectedPlatform(disconnected)).toBe(true)
+  })
+})
+
+describe('hasManualEntry', () => {
+  // V19: manual entries expose the remove affordance.
+  it('detects manually added games', () => {
+    expect(hasManualEntry(entry())).toBe(false)
+
+    const manual = entry({
+      platforms: [
+        {
+          platform: 'manual',
+          connection_status: 'ok',
+          playtime_minutes: null,
+          last_played_at: null
+        }
+      ]
+    })
+    expect(hasManualEntry(manual)).toBe(true)
   })
 })

@@ -29,6 +29,11 @@ class SyncConnection implements ShouldQueue
             return;
         }
 
+        // V19: the synthetic manual connection has nothing to sync.
+        if ($connection->platform === 'manual') {
+            return;
+        }
+
         $connection->update(['status' => ConnectionStatus::Syncing]);
 
         try {

@@ -62,3 +62,8 @@ export function formatPlaytime(minutes: number | null): string {
 export function hasDisconnectedPlatform(entry: LibraryEntry): boolean {
   return entry.platforms.some((p) => p.connection_status === 'disconnected')
 }
+
+/** V19: manually added entries are removable from the library UI. */
+export function hasManualEntry(entry: LibraryEntry): boolean {
+  return entry.platforms.some((p) => p.platform === 'manual')
+}

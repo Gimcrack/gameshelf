@@ -22,7 +22,10 @@ class ConnectionController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        return response()->json($request->user()->platformConnections);
+        // V19: the synthetic manual connection is plumbing, not a service.
+        return response()->json(
+            $request->user()->platformConnections()->where('platform', '!=', 'manual')->get(),
+        );
     }
 
     public function store(StoreConnectionRequest $request): JsonResponse
@@ -94,7 +97,7 @@ class ConnectionController extends Controller
     {
         abort_unless($connection->user_id === $request->user()->id, Response::HTTP_NOT_FOUND);
 
-        $throttleKey = "sync-now:{$connection->id}";
+        $throttleKey = "sync-now-2:{$connection->id}";
 
         if (! RateLimiter::attempt($throttleKey, 1, fn () => null, 300)) {
             return response()->json([

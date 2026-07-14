@@ -2,7 +2,7 @@
 import type { LibraryFilters, LibrarySort } from '../utils/library'
 
 const { user, logout, fetchUser } = useAuth()
-const { entries, pending, error, fetchLibrary } = useLibrary()
+const { entries, pending, error, fetchLibrary, removeManual } = useLibrary()
 
 const isLoggingOut = ref(false)
 
@@ -28,6 +28,11 @@ onMounted(async () => {
 })
 
 watch(filters, () => fetchLibrary(filters.value))
+
+async function onRemoveManual(gameId: number): Promise<void> {
+  await removeManual(gameId)
+  await fetchLibrary(filters.value)
+}
 
 async function onLogout(): Promise<void> {
   isLoggingOut.value = true
@@ -123,7 +128,12 @@ async function onLogout(): Promise<void> {
         v-else
         class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4"
       >
-        <GameCard v-for="entry in entries" :key="entry.id" :entry="entry" />
+        <GameCard
+          v-for="entry in entries"
+          :key="entry.id"
+          :entry="entry"
+          @remove-manual="onRemoveManual"
+        />
       </div>
     </section>
   </main>

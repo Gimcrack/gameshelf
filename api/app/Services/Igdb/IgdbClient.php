@@ -54,6 +54,34 @@ class IgdbClient
     }
 
     /**
+     * Fetch one game by IGDB id, or null when the id is unknown.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getGame(int $igdbId): ?array
+    {
+        $this->throttle();
+
+        $query = sprintf(
+            'fields name,cover.url,genres.name,first_release_date; where id = %d; limit 1;',
+            $igdbId,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $results = $response->json();
+
+        return is_array($results) && $results !== [] ? $results[0] : null;
+    }
+
+    /**
      * §C: time-to-beat backs the quick-wins collection — minutes for the
      * "normally" pace, or null when IGDB has no data for the game.
      */

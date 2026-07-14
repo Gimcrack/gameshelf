@@ -24,7 +24,7 @@ class SteamClient
         ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('Steam ResolveVanityURL request failed: '.$response->status());
+            throw new RuntimeException('Steam ResolveVanityURL request failed: '.$response->status() . $response->body());
         }
 
         $result = $response->json('response');

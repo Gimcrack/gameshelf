@@ -23,5 +23,9 @@ export function useLibrary() {
     }
   }
 
-  return { entries, pending, error, fetchLibrary }
+  async function removeManual(gameId: number): Promise<void> {
+    await apiFetch(`/api/library/${gameId}/manual`, { method: 'DELETE' })
+  }
+
+  return { entries, pending, error, fetchLibrary, removeManual }
 }

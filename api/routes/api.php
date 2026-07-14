@@ -7,6 +7,7 @@ use App\Http\Controllers\Connections\ConnectionController;
 use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\LibraryController;
+use App\Http\Controllers\Library\ManualEntryController;
 use App\Http\Controllers\Stats\StatsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
 
     Route::get('/library', [LibraryController::class, 'index']);
+    Route::post('/library', [ManualEntryController::class, 'store']);
+    Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);
 
     Route::get('/collections', [CollectionController::class, 'index']);
