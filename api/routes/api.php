@@ -9,6 +9,7 @@ use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\LibraryController;
 use App\Http\Controllers\Library\ManualEntryController;
 use App\Http\Controllers\Stats\StatsController;
+use App\Http\Controllers\Wishlist\WishlistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -44,4 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/collections', [CollectionController::class, 'store']);
 
     Route::get('/stats/backlog', [StatsController::class, 'backlog']);
+
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist', [WishlistController::class, 'store']);
+    Route::delete('/wishlist/{game}', [WishlistController::class, 'destroy']);
 });

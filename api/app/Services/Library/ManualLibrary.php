@@ -7,6 +7,7 @@ use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\PlatformConnection;
 use App\Models\User;
+use App\Models\WishlistItem;
 use Illuminate\Support\Facades\Date;
 
 class ManualLibrary
@@ -48,6 +49,9 @@ class ManualLibrary
             'playtime_minutes' => null,
             'added_at' => Date::now(),
         ]);
+
+        // V21: entering the library is a promote — the wish is fulfilled.
+        WishlistItem::where('user_id', $user->id)->where('game_id', $game->id)->delete();
 
         return [$owned, true];
     }
