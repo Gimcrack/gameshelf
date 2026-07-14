@@ -10,6 +10,8 @@ class IgdbClient
 {
     private const GAMES_URL = 'https://api.igdb.com/v4/games';
 
+    private const TIME_TO_BEAT_URL = 'https://api.igdb.com/v4/game_time_to_beats';
+
     // I.igdb: at most 4 requests per second.
     private const MAX_REQUESTS_PER_SECOND = 4;
 
@@ -49,6 +51,30 @@ class IgdbClient
         }
 
         return $this->bestCandidate($title, $results);
+    }
+
+    /**
+     * §C: time-to-beat backs the quick-wins collection — minutes for the
+     * "normally" pace, or null when IGDB has no data for the game.
+     */
+    public function timeToBeat(int $igdbId): ?int
+    {
+        $this->throttle();
+
+        $query = sprintf('fields normally; where game_id = %d; limit 1;', $igdbId);
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::TIME_TO_BEAT_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB game_time_to_beats request failed: '.$response->status());
+        }
+
+        $seconds = $response->json('0.normally');
+
+        return $seconds === null ? null : intdiv((int) $seconds, 60);
     }
 
     /**

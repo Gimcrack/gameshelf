@@ -23,6 +23,16 @@ class User extends Authenticatable
         return $this->hasMany(PlatformConnection::class);
     }
 
+    public function ownedGames(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(OwnedGame::class);
+    }
+
+    public function collections(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Collection::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

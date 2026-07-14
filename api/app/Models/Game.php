@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['igdb_id', 'title', 'cover_url', 'genres', 'release_date'])]
+#[Fillable(['igdb_id', 'title', 'cover_url', 'genres', 'release_date', 'time_to_beat_minutes'])]
 class Game extends Model
 {
     /**

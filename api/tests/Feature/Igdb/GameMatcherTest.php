@@ -26,6 +26,10 @@ class GameMatcherTest extends TestCase
                 'expires_in' => 3600,
             ]),
             'api.igdb.com/v4/games' => Http::response($igdbResults),
+            // §C quick wins: 4.5h normally — matched games get ttb minutes.
+            'api.igdb.com/v4/game_time_to_beats' => Http::response([
+                ['id' => 9001, 'game_id' => 72, 'normally' => 16200],
+            ]),
         ]);
     }
 
@@ -133,6 +137,7 @@ class GameMatcherTest extends TestCase
                 'expires_in' => 3600,
             ]),
             'api.igdb.com/v4/games' => Http::response([$this->portalIgdbRecord()]),
+            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
         ]);
         $connection = PlatformConnection::factory()->create(['platform' => 'steam']);
 

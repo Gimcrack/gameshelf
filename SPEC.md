@@ -80,7 +80,7 @@ T3|x|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshot
 T4|x|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,I.igdb
 T5|x|unified library UI: grid, filters, sort, disconnect badges|V1,V12,V13,I.api
 T6|x|GOG connect + token refresh + sync — validates multi-platform dedupe|V1,V2,V8,V10,V14,I.gog
-T7|.|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
+T7|x|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
 T8|.|backlog stats view + shareable card — burn-down from snapshots|V16,I.api
 T9|.|(stretch) iOS client vs existing Sanctum API|V3
 T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), compat fixes; keep `ssr: false`; auth flow + library UI ⊥ regress|V3,§C.nuxt-mode

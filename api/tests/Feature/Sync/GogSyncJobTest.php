@@ -218,6 +218,7 @@ class GogSyncJobTest extends TestCase
                 'expires_in' => 3600,
             ]),
             'api.igdb.com/v4/games' => $igdbMatch,
+            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
         ]);
 
         $steam = PlatformConnection::factory()->create([

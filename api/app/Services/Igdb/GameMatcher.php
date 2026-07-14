@@ -88,6 +88,22 @@ class GameMatcher
             'release_date' => isset($igdb['first_release_date'])
                 ? Date::createFromTimestamp($igdb['first_release_date'])->toDateString()
                 : null,
+            'time_to_beat_minutes' => $this->timeToBeat((int) $igdb['id']),
         ]);
+    }
+
+    /**
+     * §C: quick-wins enrichment is best-effort — a time-to-beat failure
+     * never fails the match (mirrors V11's tolerance).
+     */
+    private function timeToBeat(int $igdbId): ?int
+    {
+        try {
+            return $this->client->timeToBeat($igdbId);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 }

@@ -4,7 +4,9 @@ namespace App\Services\Library;
 
 use App\Models\OwnedGame;
 use App\Models\User;
+use App\Models\UserGameMeta;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 
 /**
  * V1: owned_games keeps one row per (user, platform, game); this service
@@ -18,12 +20,18 @@ class LibraryQuery
      */
     public function forUser(User $user, array $filters): array
     {
+        // V6: meta lives apart from platform data and is joined only here,
+        // at read time.
+        $metaByGame = UserGameMeta::where('user_id', $user->id)
+            ->get()
+            ->keyBy('game_id');
+
         $entries = OwnedGame::query()
             ->where('user_id', $user->id)
             ->with(['game', 'connection'])
             ->get()
             ->groupBy('game_id')
-            ->map(fn (Collection $group) => $this->entry($group))
+            ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id)))
             ->values();
 
         return $this->sort($this->filter($entries, $filters), $filters)
@@ -35,7 +43,7 @@ class LibraryQuery
      * @param  Collection<int, OwnedGame>  $group
      * @return array<string, mixed>
      */
-    private function entry(Collection $group): array
+    private function entry(Collection $group, ?UserGameMeta $meta): array
     {
         $game = $group->first()->game;
         $knownPlaytimes = $group->pluck('playtime_minutes')->reject(fn ($v) => $v === null);
@@ -47,6 +55,15 @@ class LibraryQuery
             'cover_url' => $game->cover_url,
             'genres' => $game->genres ?? [],
             'release_date' => $game->release_date?->toDateString(),
+            'time_to_beat_minutes' => $game->time_to_beat_minutes,
+            // No meta row means untouched — status defaults to unplayed.
+            'status' => $meta?->status->value ?? 'unplayed',
+            // V12: only a real meta row counts as user-declared for the
+            // unplayed collection; the default above never does.
+            'status_declared' => $meta !== null,
+            'tags' => $meta?->tags ?? [],
+            'notes' => $meta?->notes,
+            'rating' => $meta?->rating,
             'platforms' => $group->map(fn (OwnedGame $owned) => [
                 'platform' => $owned->connection->platform,
                 // V13: disconnected status flows through for UI badges.
@@ -90,7 +107,52 @@ class LibraryQuery
             // V12: unplayed means known-zero; unknown (null) is excluded.
             ->when(! empty($filters['unplayed']), fn (Collection $c) => $c->filter(
                 fn (array $e) => $e['total_playtime_minutes'] === 0,
+            ))
+            ->when(isset($filters['status']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['status'] === $filters['status'],
+            ))
+            ->when(isset($filters['tags']), fn (Collection $c) => $c->filter(
+                fn (array $e) => array_intersect($this->tagList($filters['tags']), $e['tags']) !== [],
+            ))
+            ->when(isset($filters['collection']), fn (Collection $c) => $this->systemCollection(
+                $c,
+                $filters['collection'],
             ));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function tagList(string|array $tags): array
+    {
+        return is_array($tags) ? array_values($tags) : array_map('trim', explode(',', $tags));
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $entries
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function systemCollection(Collection $entries, string $slug): Collection
+    {
+        return match ($slug) {
+            // V12: known-zero playtime or user-declared unplayed; null
+            // playtime alone stays out.
+            'unplayed' => $entries->filter(
+                fn (array $e) => $e['total_playtime_minutes'] === 0
+                    || ($e['status_declared'] && $e['status'] === 'unplayed'),
+            ),
+            // I.api: played, untouched 6+ months, not finished.
+            'abandoned' => $entries->filter(
+                fn (array $e) => $e['last_played_at'] !== null
+                    && Date::parse($e['last_played_at'])->lte(Date::now()->subMonths(SystemCollections::ABANDONED_AFTER_MONTHS))
+                    && $e['status'] !== 'finished',
+            ),
+            // §C: conditional on time-to-beat data being present.
+            'quick_wins' => $entries->filter(
+                fn (array $e) => $e['time_to_beat_minutes'] !== null
+                    && $e['time_to_beat_minutes'] < SystemCollections::QUICK_WIN_MAX_MINUTES,
+            ),
+        };
     }
 
     /**
