@@ -17,10 +17,21 @@ class StoreConnectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // GOG connect arrives with T6; only steam is accepted today.
-            'platform' => ['required', 'string', 'in:steam'],
-            'steam_id' => ['required_without:vanity_url', 'string', 'regex:/^\d{17}$/'],
-            'vanity_url' => ['required_without:steam_id', 'string', 'max:255'],
+            'platform' => ['required', 'string', 'in:steam,gog'],
+            'steam_id' => [
+                'exclude_unless:platform,steam',
+                'required_without:vanity_url',
+                'string',
+                'regex:/^\d{17}$/',
+            ],
+            'vanity_url' => [
+                'exclude_unless:platform,steam',
+                'required_without:steam_id',
+                'string',
+                'max:255',
+            ],
+            // GOG OAuth authorization code, exchanged server-side (I.gog).
+            'code' => ['exclude_unless:platform,gog', 'required', 'string'],
         ];
     }
 
@@ -30,8 +41,9 @@ class StoreConnectionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'platform.in' => 'Only Steam connections are supported right now.',
+            'platform.in' => 'Only Steam and GOG connections are supported right now.',
             'steam_id.required_without' => 'Provide either a SteamID64 or a vanity URL name.',
+            'code.required' => 'Provide the GOG login code to connect a GOG account.',
         ];
     }
 }

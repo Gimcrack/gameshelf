@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Connections\StoreConnectionRequest;
 use App\Jobs\SyncConnection;
 use App\Models\PlatformConnection;
+use App\Services\Gog\GogClient;
 use App\Services\Steam\SteamClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,10 +25,27 @@ class ConnectionController extends Controller
         return response()->json($request->user()->platformConnections);
     }
 
-    public function store(StoreConnectionRequest $request, SteamClient $steam): JsonResponse
+    public function store(StoreConnectionRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $steamId = $validated['steam_id'] ?? $steam->resolveVanityUrl($validated['vanity_url']);
+
+        $connection = match ($validated['platform']) {
+            'steam' => $this->connectSteam($request, $validated),
+            'gog' => $this->connectGog($request, $validated),
+        };
+
+        SyncConnection::dispatch($connection->id);
+
+        return response()->json($connection, Response::HTTP_CREATED);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function connectSteam(StoreConnectionRequest $request, array $validated): PlatformConnection
+    {
+        $steamId = $validated['steam_id']
+            ?? app(SteamClient::class)->resolveVanityUrl($validated['vanity_url']);
 
         if ($steamId === null) {
             throw ValidationException::withMessages([
@@ -35,15 +53,37 @@ class ConnectionController extends Controller
             ]);
         }
 
-        $connection = $request->user()->platformConnections()->create([
-            'platform' => $validated['platform'],
+        return $request->user()->platformConnections()->create([
+            'platform' => 'steam',
             'external_account_id' => $steamId,
             'status' => ConnectionStatus::Pending,
         ]);
+    }
 
-        SyncConnection::dispatch($connection->id);
+    /**
+     * I.gog: exchange the login code server-side; tokens land encrypted via
+     * the model casts (V2).
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function connectGog(StoreConnectionRequest $request, array $validated): PlatformConnection
+    {
+        $tokens = app(GogClient::class)->exchangeCode($validated['code']);
 
-        return response()->json($connection, Response::HTTP_CREATED);
+        if ($tokens === null) {
+            throw ValidationException::withMessages([
+                'code' => ['GOG rejected that login code. Log in to GOG again and retry.'],
+            ]);
+        }
+
+        return $request->user()->platformConnections()->create([
+            'platform' => 'gog',
+            'external_account_id' => $tokens['user_id'],
+            'auth_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'token_expires_at' => now()->addSeconds($tokens['expires_in']),
+            'status' => ConnectionStatus::Pending,
+        ]);
     }
 
     /**

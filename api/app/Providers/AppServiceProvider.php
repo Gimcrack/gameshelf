@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Gog\GogClient;
 use App\Services\Igdb\IgdbClient;
 use App\Services\Igdb\TwitchAuth;
 use App\Services\Steam\SteamClient;
@@ -19,6 +20,13 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(SteamClient::class, function () {
             return new SteamClient((string) config('services.steam.key'));
+        });
+
+        $this->app->bind(GogClient::class, function () {
+            return new GogClient(
+                (string) config('services.gog.client_id'),
+                (string) config('services.gog.client_secret'),
+            );
         });
 
         $this->app->bind(TwitchAuth::class, function () {
