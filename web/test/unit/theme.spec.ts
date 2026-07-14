@@ -36,7 +36,13 @@ describe('dark slate + teal theme (SPEC §C.theme)', () => {
   })
 
   it('views carry the slate/teal motif, no light-mode variants', async () => {
-    const views = ['../../app/pages/index.vue', '../../app/pages/login.vue', '../../app/pages/register.vue', '../../app/components/GameCard.vue']
+    const views = [
+      '../../app/pages/index.vue',
+      '../../app/pages/login.vue',
+      '../../app/pages/register.vue',
+      '../../app/pages/welcome.vue',
+      '../../app/components/GameCard.vue'
+    ]
     for (const view of views) {
       const source = await read(view)
       expect(source, `${view} uses slate surfaces`).toMatch(/slate-(8|9)\d\d/)

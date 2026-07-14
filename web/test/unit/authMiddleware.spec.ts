@@ -16,11 +16,34 @@ beforeEach(() => {
 })
 
 describe('auth.global middleware', () => {
-  it('redirects unauthenticated users to /login for protected routes', () => {
+  it('redirects unauthenticated users on / to the landing page', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     authMiddleware(routeTo('/') as any, routeTo('/') as any)
 
+    expect(navigateTo).toHaveBeenCalledWith('/welcome')
+  })
+
+  it('redirects unauthenticated users to /login for other protected routes', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authMiddleware(routeTo('/settings') as any, routeTo('/') as any)
+
     expect(navigateTo).toHaveBeenCalledWith('/login')
+  })
+
+  it('allows unauthenticated users to reach /welcome', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authMiddleware(routeTo('/welcome') as any, routeTo('/') as any)
+
+    expect(navigateTo).not.toHaveBeenCalled()
+  })
+
+  it('redirects authenticated users away from /welcome to /', () => {
+    useAuthToken().value = 'token-value'
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    authMiddleware(routeTo('/welcome') as any, routeTo('/') as any)
+
+    expect(navigateTo).toHaveBeenCalledWith('/')
   })
 
   it('allows unauthenticated users to reach /login and /register', () => {

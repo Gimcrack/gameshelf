@@ -12,6 +12,7 @@ Source: `design-doc.md` v0.1.
 - Frontend: Nuxt 4 (Vue), JSON over HTTPS. Was Nuxt 3 → upgrade T10.
 - Styling: Tailwind CSS. Added amend 2026-07-13 → T11.
 - Theme: dark only, ∀ views. Slate base + teal accent motif. ⊥ light mode v1.
+- Landing: 1 public marketing page (route `/welcome`), guests → `/welcome` ≠ `/login`. Same dark slate/teal theme. SPA `ssr: false` holds → SEO limited, accepted v1. Added amend 2026-07-13 → T12.
 - DB: MySQL (Eloquent). tags[]/genres[] → JSON columns | pivot tables.
 - Queue: Laravel Queue, Redis driver (Redis already in stack) + Scheduler. Daily per-user sync & on-demand "sync now".
 - "sync now" throttled per connection (≥5 min gap) + API rate limiting (Sanctum throttle).
@@ -84,6 +85,7 @@ T8|.|backlog stats view + shareable card — burn-down from snapshots|V16,I.api
 T9|.|(stretch) iOS client vs existing Sanctum API|V3
 T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), compat fixes; keep `ssr: false`; auth flow + library UI ⊥ regress|V3,§C.nuxt-mode
 T11|x|adopt Tailwind CSS in web/; restyle ∀ views dark slate + teal (login, register, library grid, GameCard, badges)|§C.styling,§C.theme
+T12|x|landing marketing page `/welcome`: hero, feature pitch (connect→dedupe→triage backlog), CTA → register/login; public route in auth.global; guests hitting `/` → `/welcome`|§C.landing,§C.theme
 
 ## §B bugs
 

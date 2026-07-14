@@ -1,7 +1,7 @@
 import { defineNuxtRouteMiddleware, navigateTo } from '#app'
 import { useAuthToken, restoreTokenFromStorage } from '../utils/authState'
 
-const PUBLIC_ROUTES = new Set(['/login', '/register'])
+const PUBLIC_ROUTES = new Set(['/welcome', '/login', '/register'])
 
 export default defineNuxtRouteMiddleware((to) => {
   restoreTokenFromStorage()
@@ -10,7 +10,8 @@ export default defineNuxtRouteMiddleware((to) => {
   const isPublicRoute = PUBLIC_ROUTES.has(to.path)
 
   if (!token.value && !isPublicRoute) {
-    return navigateTo('/login')
+    // Root is the shop window for guests; deep links still go to login.
+    return navigateTo(to.path === '/' ? '/welcome' : '/login')
   }
 
   if (token.value && isPublicRoute) {
