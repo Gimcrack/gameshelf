@@ -47,6 +47,10 @@ Source: `design-doc.md` v0.1.
 - api: `DELETE /api/library/:game_id/manual` → remove manual entry only; platform-synced rows untouchable. Added T14.
 - api: `GET /api/discover/search` {q} → IGDB search proxy, each hit {igdb_id, title, cover_url, genres[], release_date, rating?, in_library}. Added T15.
 - api: `GET /api/discover/browse` {genre?, sort: rating|release|popularity, page} → IGDB catalogue proxy, same hit shape. Added T15.
+- api: `GET /api/discover/similar` → rails [{seed: owned game, similar: [hit...]}], seeds = top-playtime/rated owned w/ igdb_id. IGDB `similar_games`. Added T16.
+- api: `GET/POST/DELETE /api/wishlist` → save discovered games w/o ownership claim; POST {igdb_id}, hit shape + added_at; promote = POST /api/library + row removed. Added T17.
+- api: `GET /api/discover/franchises` → [{franchise, owned: [...], missing: [hit...]}] via IGDB franchise data. Edition/remaster noise accepted v1. Added T18.
+- api: `GET /api/discover/upcoming` → hits w/ release_date ∈ next 6 mo, filtered by caller's top owned genres. Added T19.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
 - ext: Steam Web API `GetOwnedGames` — Steam ID + API key; OpenID identity-only, library read via public Web API; returns `playtime_2weeks`
 - ext: Steam `ResolveVanityURL` — vanity URL → SteamID64 at connect
@@ -61,6 +65,7 @@ Source: `design-doc.md` v0.1.
 - db: `owned_games` — 1 row per (user, platform, game): id, user_id, platform_connection_id, game_id, platform_game_id, playtime_minutes (nullable), last_played_at, install_status, added_at
 - db: `playtime_snapshots` — id, owned_game_id, playtime_minutes, captured_at. Appended per sync.
 - db: `user_game_meta` — id, user_id, game_id, status enum(unplayed|playing|finished|abandoned), tags[], notes, rating
+- db: `wishlist_items` — id, user_id, game_id, added_at. unique(user_id, game_id). Added T17.
 
 ## §V invariants
 
@@ -83,7 +88,8 @@ V16: ∀ sync → append `playtime_snapshots` row per owned_game with playtime d
 V17: email | password change ! verify current_password. ⊥ silent account takeover via stolen bearer token.
 V18: API token plaintext → response once @ creation only. Stored hashed (Sanctum), ⊥ retrievable later.
 V19: manual adds → per-user synthetic `manual` platform_connection (no tokens, ⊥ sync jobs). V10 upsert key applies → ⊥ duplicate manual rows per game. Manual entries deletable; synced entries ⊥ manual delete.
-V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request.
+V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request. `in_wishlist` same rule (T17).
+V21: wishlist ∩ library = ∅. Add-to-wishlist of owned game → 200 no-op w/ in_library flag. Promote to library → wishlist row removed. Wishlist ⊥ counted in library, stats, backlog.
 
 ## §T tasks
 
@@ -103,6 +109,10 @@ T12|x|landing marketing page `/welcome`: hero, feature pitch (connect→dedupe�
 T13|x|profile page `/profile`: account section (email/password change vs current_password), connected services (list + connect steam/gog + sync now + disconnect vs existing I.api), API keys (list/create w/ once-shown plaintext/revoke)|V2,V13,V17,V18,I.api,§C.theme
 T14|.|manual add: `manual` platform enum + synthetic connection, POST /api/library {igdb_id}, manual delete, library UI add/remove affordances|V1,V7,V10,V19,I.api
 T15|.|discover: /api/discover search+browse (IGDB proxy, Redis cache, in_library overlay), FE /discover page — search bar, browse grid w/ genre/sort, add-to-library button|V4,V19,V20,I.igdb,§C.discovery,§C.theme
+T16|.|similar-games rails: seeds from top owned, IGDB similar_games cached, "Because you played X" sections on /discover|V4,V20,§C.discovery
+T17|.|wishlist: wishlist_items table, GET/POST/DELETE /api/wishlist, in_wishlist overlay, wishlist section + promote-to-owned flow, save buttons on discover hits|V20,V21,I.api
+T18|.|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
+T19|.|upcoming releases: IGDB release_dates ∈ 6 mo window × caller top genres, /api/discover/upcoming, rail on /discover|V4,V20,§C.discovery
 
 ## §B bugs
 
