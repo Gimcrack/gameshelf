@@ -48,7 +48,11 @@ Source: `design-doc.md` v0.1.
 - api: `GET /api/discover/search` {q} → IGDB search proxy, each hit {igdb_id, title, cover_url, genres[], release_date, rating?, in_library}. Added T15.
 - api: `GET /api/discover/browse` {genre?, sort: rating|release|popularity, page} → IGDB catalogue proxy, same hit shape. Added T15.
 - api: `GET /api/discover/similar` → rails [{seed: owned game, similar: [hit...]}], seeds = top-playtime/rated owned w/ igdb_id. IGDB `similar_games`. Added T16.
-- api: `GET/POST/DELETE /api/wishlist` → save discovered games w/o ownership claim; POST {igdb_id}, hit shape + added_at; promote = POST /api/library + row removed. Added T17.
+- api: `GET/POST/DELETE /api/wishlist` → save discovered games w/o ownership claim; POST {igdb_id}, hit shape + added_at + per-platform presence flags; promote = POST /api/library + row removed. Added T17.
+- api: `POST /api/wishlist/sync` → 202, dispatch wishlist sync job (throttled ≥5 min like connection sync). Added T20.
+- ext: Steam `IWishlistService/GetWishlist` → appids, ! public profile (V15-style error else); titles via store `appdetails` (cached, unauthenticated). READ ONLY — Steam wishlist writes impossible via public API. T20.
+- ext: GOG `embed.gog.com/user/wishlist.json` read; `user/wishlist/add/{productId}` + `remove/{productId}` write w/ stored OAuth token (V14 refresh applies). 2-way. T20.
+- ext: IGDB `external_games` → igdb_id ↔ steam appid | gog product id mapping (category 1 = steam, 5 = gog). Cached forever. T20.
 - api: `GET /api/discover/franchises` → [{franchise, owned: [...], missing: [hit...]}] via IGDB franchise data. Edition/remaster noise accepted v1. Added T18.
 - api: `GET /api/discover/upcoming` → hits w/ release_date ∈ next 6 mo, filtered by caller's top owned genres. Added T19.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
@@ -65,7 +69,7 @@ Source: `design-doc.md` v0.1.
 - db: `owned_games` — 1 row per (user, platform, game): id, user_id, platform_connection_id, game_id, platform_game_id, playtime_minutes (nullable), last_played_at, install_status, added_at
 - db: `playtime_snapshots` — id, owned_game_id, playtime_minutes, captured_at. Appended per sync.
 - db: `user_game_meta` — id, user_id, game_id, status enum(unplayed|playing|finished|abandoned), tags[], notes, rating
-- db: `wishlist_items` — id, user_id, game_id, added_at. unique(user_id, game_id). Added T17.
+- db: `wishlist_items` — id, user_id, game_id, added_at, origin enum(local|steam|gog), steam_present, gog_present, gog_product_id (nullable), suppressed_at (nullable tombstone), synced_at. unique(user_id, game_id). Added T17, sync cols T20.
 
 ## §V invariants
 
@@ -90,6 +94,7 @@ V18: API token plaintext → response once @ creation only. Stored hashed (Sanct
 V19: manual adds → per-user synthetic `manual` platform_connection (no tokens, ⊥ sync jobs). V10 upsert key applies → ⊥ duplicate manual rows per game. Manual entries deletable; synced entries ⊥ manual delete.
 V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request. `in_wishlist` same rule (T17).
 V21: wishlist ∩ library = ∅. Add-to-wishlist of owned game → 200 no-op w/ in_library flag. Promote to library → wishlist row removed. Wishlist ⊥ counted in library, stats, backlog.
+V22: wishlist sync idempotent + asymmetric. Pull steam+gog → upsert (⊥ dups per unique key); local delete → tombstone (`suppressed_at`) → ⊥ re-import while platform still lists it, gog_present rows also pushed remove to GOG; local adds push to GOG only when external mapping resolves; Steam ⊥ pushed ever (no write API). Remote GOG write ≤ 1 per state change. Sync ⊥ run inline (V8 queue).
 
 ## §T tasks
 
@@ -110,9 +115,10 @@ T13|x|profile page `/profile`: account section (email/password change vs current
 T14|.|manual add: `manual` platform enum + synthetic connection, POST /api/library {igdb_id}, manual delete, library UI add/remove affordances|V1,V7,V10,V19,I.api
 T15|.|discover: /api/discover search+browse (IGDB proxy, Redis cache, in_library overlay), FE /discover page — search bar, browse grid w/ genre/sort, add-to-library button|V4,V19,V20,I.igdb,§C.discovery,§C.theme
 T16|.|similar-games rails: seeds from top owned, IGDB similar_games cached, "Because you played X" sections on /discover|V4,V20,§C.discovery
-T17|.|wishlist: wishlist_items table, GET/POST/DELETE /api/wishlist, in_wishlist overlay, wishlist section + promote-to-owned flow, save buttons on discover hits|V20,V21,I.api
+T17|.|wishlist core: wishlist_items table, GET/POST/DELETE /api/wishlist (games created from igdb_id via shared GameFromIgdb service), in_wishlist overlay, wishlist page + promote-to-owned flow|V7,V20,V21,I.api
 T18|.|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
 T19|.|upcoming releases: IGDB release_dates ∈ 6 mo window × caller top genres, /api/discover/upcoming, rail on /discover|V4,V20,§C.discovery
+T20|.|wishlist platform sync: queued job — pull steam (read-only, appdetails titles) + gog wishlists, tombstone suppression, push local add/remove → GOG via external_games mapping, POST /api/wishlist/sync throttled, sync status in wishlist UI|V8,V14,V15,V21,V22,I.gog,I.steam,I.igdb
 
 ## §B bugs
 
