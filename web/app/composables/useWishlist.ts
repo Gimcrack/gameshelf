@@ -4,13 +4,17 @@ import { apiFetch, type ApiError } from '../utils/api'
 
 export interface WishlistItem {
   game_id: number
-  igdb_id: number
+  igdb_id: number | null
   title: string
   cover_url: string | null
   genres: string[]
   release_date: string | null
   time_to_beat_minutes: number | null
   added_at: string
+  origin: 'local' | 'steam' | 'gog'
+  steam_present: boolean
+  gog_present: boolean
+  synced_at: string | null
 }
 
 export function useWishlist() {
@@ -50,5 +54,19 @@ export function useWishlist() {
     items.value = items.value.filter((i) => i.game_id !== item.game_id)
   }
 
-  return { items, pending, error, fetchWishlist, addToWishlist, removeFromWishlist, promoteToLibrary }
+  /** V22: queued platform sync — GOG two-way, Steam import-only. */
+  async function syncWishlist(): Promise<void> {
+    await apiFetch('/api/wishlist/sync', { method: 'POST' })
+  }
+
+  return {
+    items,
+    pending,
+    error,
+    fetchWishlist,
+    addToWishlist,
+    removeFromWishlist,
+    promoteToLibrary,
+    syncWishlist
+  }
 }

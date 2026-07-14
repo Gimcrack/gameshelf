@@ -82,6 +82,48 @@ class GogClient
     }
 
     /**
+     * Product ids on the user's GOG wishlist (I.gog wishlist read, T20).
+     *
+     * @return list<string>
+     */
+    public function getWishlist(string $accessToken): array
+    {
+        $response = Http::withToken($accessToken)->get(self::EMBED_URL.'/user/wishlist.json');
+
+        if ($response->failed()) {
+            throw new RuntimeException('GOG wishlist request failed: '.$response->status());
+        }
+
+        return array_map('strval', array_keys($response->json('wishlist', [])));
+    }
+
+    /**
+     * V22: remote write — add one product to the GOG wishlist.
+     */
+    public function addToWishlist(string $accessToken, string $productId): void
+    {
+        $response = Http::withToken($accessToken)
+            ->post(self::EMBED_URL."/user/wishlist/add/{$productId}");
+
+        if ($response->failed()) {
+            throw new RuntimeException('GOG wishlist add failed: '.$response->status());
+        }
+    }
+
+    /**
+     * V22: remote write — remove one product from the GOG wishlist.
+     */
+    public function removeFromWishlist(string $accessToken, string $productId): void
+    {
+        $response = Http::withToken($accessToken)
+            ->post(self::EMBED_URL."/user/wishlist/remove/{$productId}");
+
+        if ($response->failed()) {
+            throw new RuntimeException('GOG wishlist remove failed: '.$response->status());
+        }
+    }
+
+    /**
      * @param  array<string, string>  $params
      * @return array{access_token: string, refresh_token: string, expires_in: int, user_id: string}|null
      */

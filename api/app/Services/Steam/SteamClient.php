@@ -2,12 +2,15 @@
 
 namespace App\Services\Steam;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class SteamClient
 {
     private const BASE_URL = 'https://api.steampowered.com';
+
+    private const STORE_URL = 'https://store.steampowered.com';
 
     public function __construct(private readonly string $apiKey)
     {
@@ -64,5 +67,51 @@ class SteamClient
         }
 
         return $result['games'] ?? [];
+    }
+
+    /**
+     * Wishlist appids for a SteamID64, or null for private wishlists —
+     * Steam signals privacy with an empty response object (V15 pattern).
+     * READ ONLY: Steam has no public wishlist write API (V22).
+     *
+     * @return list<int>|null
+     */
+    public function getWishlist(string $steamId): ?array
+    {
+        $response = Http::get(self::BASE_URL.'/IWishlistService/GetWishlist/v1/', [
+            'key' => $this->apiKey,
+            'steamid' => $steamId,
+        ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException('Steam GetWishlist request failed: '.$response->status());
+        }
+
+        $result = $response->json('response');
+
+        if (! is_array($result) || ! array_key_exists('items', $result)) {
+            return null;
+        }
+
+        return array_map(fn (array $item) => (int) $item['appid'], $result['items']);
+    }
+
+    /**
+     * Store title for an appid, cached forever — names don't churn and the
+     * unauthenticated store endpoint rate-limits aggressively.
+     */
+    public function appName(int $appId): ?string
+    {
+        return Cache::rememberForever("steam-app-name:{$appId}", function () use ($appId) {
+            $response = Http::get(self::STORE_URL.'/api/appdetails', ['appids' => $appId]);
+
+            if ($response->failed()) {
+                throw new RuntimeException('Steam appdetails request failed: '.$response->status());
+            }
+
+            $entry = $response->json((string) $appId);
+
+            return ($entry['success'] ?? false) ? ($entry['data']['name'] ?? null) : null;
+        });
     }
 }

@@ -2,10 +2,11 @@
 import type { ApiError } from '../utils/api'
 import type { WishlistItem } from '../composables/useWishlist'
 
-const { items, pending, error, fetchWishlist, removeFromWishlist, promoteToLibrary } =
+const { items, pending, error, fetchWishlist, removeFromWishlist, promoteToLibrary, syncWishlist } =
   useWishlist()
 
 const actionError = ref('')
+const syncMessage = ref('')
 const busy = ref(false)
 
 onMounted(() => fetchWishlist())
@@ -29,6 +30,14 @@ function onPromote(item: WishlistItem): Promise<void> {
 function onRemove(item: WishlistItem): Promise<void> {
   return run(() => removeFromWishlist(item.game_id))
 }
+
+function onSync(): Promise<void> {
+  syncMessage.value = ''
+  return run(async () => {
+    await syncWishlist()
+    syncMessage.value = 'Sync queued — platform wishlists update in the background.'
+  })
+}
 </script>
 
 <template>
@@ -37,14 +46,29 @@ function onRemove(item: WishlistItem): Promise<void> {
       <h1 class="text-2xl font-bold tracking-tight">
         Your <span class="text-teal-400">wishlist</span>
       </h1>
-      <NuxtLink
-        to="/"
-        class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300"
-      >
-        Back to library
-      </NuxtLink>
+      <div class="flex items-center gap-2">
+        <button
+          :disabled="busy"
+          class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="onSync"
+        >
+          Sync platform wishlists
+        </button>
+        <NuxtLink
+          to="/"
+          class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300"
+        >
+          Back to library
+        </NuxtLink>
+      </div>
     </header>
 
+    <p class="mb-4 text-xs text-slate-500">
+      GOG syncs both ways. Steam wishlists import only — Steam offers no way to add items
+      remotely.
+    </p>
+
+    <p v-if="syncMessage" class="mb-4 text-sm text-teal-300">{{ syncMessage }}</p>
     <p v-if="actionError" class="mb-4 text-sm text-rose-400">{{ actionError }}</p>
     <p v-if="error" class="text-rose-400">{{ error }}</p>
     <p v-else-if="pending && items.length === 0" class="text-slate-400">Loading wishlist…</p>
@@ -73,6 +97,20 @@ function onRemove(item: WishlistItem): Promise<void> {
         </div>
         <div class="flex flex-1 flex-col px-3 pb-3 pt-2.5">
           <h3 class="mb-1 text-sm font-semibold leading-snug text-slate-100">{{ item.title }}</h3>
+          <ul class="mb-1.5 flex flex-wrap gap-1.5 p-0">
+            <li
+              v-if="item.steam_present"
+              class="rounded bg-teal-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"
+            >
+              steam
+            </li>
+            <li
+              v-if="item.gog_present"
+              class="rounded bg-teal-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"
+            >
+              gog
+            </li>
+          </ul>
           <p v-if="item.genres.length" class="mb-2 text-xs text-slate-500">
             {{ item.genres.join(', ') }}
           </p>

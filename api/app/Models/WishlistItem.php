@@ -9,7 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * V21: a wish, not ownership — never counted in library, stats, backlog.
  */
-#[Fillable(['user_id', 'game_id', 'added_at'])]
+#[Fillable([
+    'user_id', 'game_id', 'added_at', 'origin', 'steam_present',
+    'gog_present', 'gog_product_id', 'suppressed_at', 'synced_at',
+])]
 class WishlistItem extends Model
 {
     /**
@@ -19,6 +22,10 @@ class WishlistItem extends Model
     {
         return [
             'added_at' => 'datetime',
+            'steam_present' => 'boolean',
+            'gog_present' => 'boolean',
+            'suppressed_at' => 'datetime',
+            'synced_at' => 'datetime',
         ];
     }
 

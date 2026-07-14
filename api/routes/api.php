@@ -48,5 +48,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);
+    Route::post('/wishlist/sync', [WishlistController::class, 'sync']);
     Route::delete('/wishlist/{game}', [WishlistController::class, 'destroy']);
 });

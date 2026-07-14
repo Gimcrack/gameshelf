@@ -94,7 +94,7 @@ V18: API token plaintext → response once @ creation only. Stored hashed (Sanct
 V19: manual adds → per-user synthetic `manual` platform_connection (no tokens, ⊥ sync jobs). V10 upsert key applies → ⊥ duplicate manual rows per game. Manual entries deletable; synced entries ⊥ manual delete.
 V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request. `in_wishlist` same rule (T17).
 V21: wishlist ∩ library = ∅. Add-to-wishlist of owned game → 200 no-op w/ in_library flag. Promote to library → wishlist row removed. Wishlist ⊥ counted in library, stats, backlog.
-V22: wishlist sync idempotent + asymmetric. Pull steam+gog → upsert (⊥ dups per unique key); local delete → tombstone (`suppressed_at`) → ⊥ re-import while platform still lists it, gog_present rows also pushed remove to GOG; local adds push to GOG only when external mapping resolves; Steam ⊥ pushed ever (no write API). Remote GOG write ≤ 1 per state change. Sync ⊥ run inline (V8 queue).
+V22: wishlist sync idempotent + asymmetric. Remote removal propagates: item previously platform-present, now absent from pull → local wish deleted (unless other platform still lists | tombstone pending — then flag clears only). ⊥ re-push after remote removal (thrash). Pull steam+gog → upsert (⊥ dups per unique key); local delete → tombstone (`suppressed_at`) → ⊥ re-import while platform still lists it, gog_present rows also pushed remove to GOG; local adds push to GOG only when external mapping resolves; Steam ⊥ pushed ever (no write API). Remote GOG write ≤ 1 per state change. Sync ⊥ run inline (V8 queue).
 
 ## §T tasks
 
@@ -118,9 +118,10 @@ T16|.|similar-games rails: seeds from top owned, IGDB similar_games cached, "Bec
 T17|x|wishlist core: wishlist_items table, GET/POST/DELETE /api/wishlist (games created from igdb_id via shared GameFromIgdb service), in_wishlist overlay, wishlist page + promote-to-owned flow|V7,V20,V21,I.api
 T18|.|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
 T19|.|upcoming releases: IGDB release_dates ∈ 6 mo window × caller top genres, /api/discover/upcoming, rail on /discover|V4,V20,§C.discovery
-T20|.|wishlist platform sync: queued job — pull steam (read-only, appdetails titles) + gog wishlists, tombstone suppression, push local add/remove → GOG via external_games mapping, POST /api/wishlist/sync throttled, sync status in wishlist UI|V8,V14,V15,V21,V22,I.gog,I.steam,I.igdb
+T20|x|wishlist platform sync: queued job — pull steam (read-only, appdetails titles) + gog wishlists, tombstone suppression, push local add/remove → GOG via external_games mapping, POST /api/wishlist/sync throttled, sync status in wishlist UI|V8,V14,V15,V21,V22,I.gog,I.steam,I.igdb
 
 ## §B bugs
 
 id|date|cause|fix
 B1|2026-07-13|browser "CORS" error local = no server bound to apiBase http://localhost:8000; Herd site `gameshelf` pointed at `web/.output/public` ⊥ `api/public`; Laravel CORS defaults fine (ACAO *)|Herd relink → api/, web/.env apiBase, §C.dev-topology
+B2|2026-07-14|T20 dev: V22 unspecified for remote removal — pull-absent + gog_present cleared flag → push re-added → remote write thrash. Caught by idempotency test pre-commit|V22 extended
