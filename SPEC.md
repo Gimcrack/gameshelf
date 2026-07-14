@@ -37,17 +37,20 @@ Source: `design-doc.md` v0.1.
 - api: `POST /api/connections/:id/sync` → 202, dispatch sync job
 - api: `GET /api/connections` → [{platform, last_synced_at, status}]
 - api: `DELETE /api/connections/:id` → 200 soft disconnect: status → disconnected, owned_games kept (V13). Added T5.
-- api: `GET /api/library` → deduped games, owned-on platforms per game; sort: alpha|playtime|last_played|added; filter: platform|genre|status|tags|playtime range
-- api: `GET/POST /api/collections` → saved filter presets; system defaults: Unplayed (playtime=0), Abandoned (played, untouched 6+ mo, ≠finished), Quick wins (est completion < 5 hrs ? metadata)
+- api: `GET /api/library` → deduped games, owned-on platforms per game; sort: alpha|playtime|last_played|added; filter: platform|genre|status|tags|playtime range|collection (system slug | custom id, explicit params win). Entries carry meta (status, status_declared, tags, notes, rating) + time_to_beat_minutes. Extended T7.
+- api: `PUT /api/library/:game_id/meta` {status?, tags[]?, notes?, rating? 1-5} → upsert partial, 404 if game ∉ caller library. Added T7.
+- api: `GET/POST /api/collections` → GET {system: [{slug,name,description}], custom: [...]}; POST {name, filters} → 201, filter keys ⊂ library vocabulary, ⊥ nested collection. System: unplayed (playtime=0 | declared unplayed, V12), abandoned (played, untouched ≥6 mo, ≠finished), quick_wins (ttb < 300 min ∧ ttb present). Shape set T7.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
 - ext: Steam Web API `GetOwnedGames` — Steam ID + API key; OpenID identity-only, library read via public Web API; returns `playtime_2weeks`
 - ext: Steam `ResolveVanityURL` — vanity URL → SteamID64 at connect
 - ext: GOG OAuth2 → embedded API for owned games; tokens expire ~1 hr → refresh flow
 - ext: IGDB search (title + platform hint) → canonical game record; auth = Twitch OAuth client credentials (app access token), ≤ 4 req/sec
+- ext: IGDB `game_time_to_beats` → normally-pace seconds → games.time_to_beat_minutes; best-effort, fail ⊥ fail match. Added T7.
 - env: `STEAM_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET`, `APP_KEY` (token encryption) ! set
 - db: `users` — id, email, created_at
 - db: `platform_connections` — id, user_id, platform enum(steam|gog), external_account_id, auth_token (encrypted), refresh_token (encrypted, nullable), token_expires_at, last_synced_at, status
-- db: `games` — canonical, 1 row per real-world game: id, igdb_id (nullable — provisional when unmatched), title, cover_url, genres[], release_date
+- db: `games` — canonical, 1 row per real-world game: id, igdb_id (nullable — provisional when unmatched), title, cover_url, genres[], release_date, time_to_beat_minutes (nullable, T7)
+- db: `collections` — id, user_id, name, filters JSON (library filter preset). Added T7.
 - db: `owned_games` — 1 row per (user, platform, game): id, user_id, platform_connection_id, game_id, platform_game_id, playtime_minutes (nullable), last_played_at, install_status, added_at
 - db: `playtime_snapshots` — id, owned_game_id, playtime_minutes, captured_at. Appended per sync.
 - db: `user_game_meta` — id, user_id, game_id, status enum(unplayed|playing|finished|abandoned), tags[], notes, rating
