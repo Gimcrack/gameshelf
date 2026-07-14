@@ -41,6 +41,7 @@ describe('dark slate + teal theme (SPEC §C.theme)', () => {
       '../../app/pages/login.vue',
       '../../app/pages/register.vue',
       '../../app/pages/welcome.vue',
+      '../../app/pages/stats.vue',
       '../../app/components/GameCard.vue'
     ]
     for (const view of views) {
