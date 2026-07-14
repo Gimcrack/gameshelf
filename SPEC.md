@@ -40,6 +40,8 @@ Source: `design-doc.md` v0.1.
 - api: `GET /api/library` → deduped games, owned-on platforms per game; sort: alpha|playtime|last_played|added; filter: platform|genre|status|tags|playtime range|collection (system slug | custom id, explicit params win). Entries carry meta (status, status_declared, tags, notes, rating) + time_to_beat_minutes. Extended T7.
 - api: `PUT /api/library/:game_id/meta` {status?, tags[]?, notes?, rating? 1-5} → upsert partial, 404 if game ∉ caller library. Added T7.
 - api: `GET/POST /api/collections` → GET {system: [{slug,name,description}], custom: [...]}; POST {name, filters} → 201, filter keys ⊂ library vocabulary, ⊥ nested collection. System: unplayed (playtime=0 | declared unplayed, V12), abandoned (played, untouched ≥6 mo, ≠finished), quick_wins (ttb < 300 min ∧ ttb present). Shape set T7.
+- api: `PATCH /api/user` {email? | password? + password_confirmation?, current_password !} → updated user JSON. Added T13.
+- api: `GET /api/tokens` → [{id, name, last_used_at, created_at}]; `POST /api/tokens` {name} → 201 {token: plaintext, shown once}; `DELETE /api/tokens/:id` → revoke. Sanctum PATs. Added T13.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
 - ext: Steam Web API `GetOwnedGames` — Steam ID + API key; OpenID identity-only, library read via public Web API; returns `playtime_2weeks`
 - ext: Steam `ResolveVanityURL` — vanity URL → SteamID64 at connect
@@ -73,6 +75,8 @@ V13: disconnect → soft-keep. owned_games rows persist, connection status disco
 V14: GOG token refresh before expiry via refresh_token. V2 encryption applies to refresh_token.
 V15: Steam private profile → distinct connection error state + user messaging. ⊥ silent 0-game sync.
 V16: ∀ sync → append `playtime_snapshots` row per owned_game with playtime data. Burn-down reads snapshots.
+V17: email | password change ! verify current_password. ⊥ silent account takeover via stolen bearer token.
+V18: API token plaintext → response once @ creation only. Stored hashed (Sanctum), ⊥ retrievable later.
 
 ## §T tasks
 
@@ -89,6 +93,7 @@ T9|.|(stretch) iOS client vs existing Sanctum API|V3
 T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), compat fixes; keep `ssr: false`; auth flow + library UI ⊥ regress|V3,§C.nuxt-mode
 T11|x|adopt Tailwind CSS in web/; restyle ∀ views dark slate + teal (login, register, library grid, GameCard, badges)|§C.styling,§C.theme
 T12|x|landing marketing page `/welcome`: hero, feature pitch (connect→dedupe→triage backlog), CTA → register/login; public route in auth.global; guests hitting `/` → `/welcome`|§C.landing,§C.theme
+T13|x|profile page `/profile`: account section (email/password change vs current_password), connected services (list + connect steam/gog + sync now + disconnect vs existing I.api), API keys (list/create w/ once-shown plaintext/revoke)|V2,V13,V17,V18,I.api,§C.theme
 
 ## §B bugs
 

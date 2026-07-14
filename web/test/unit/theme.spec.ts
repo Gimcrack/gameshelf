@@ -42,7 +42,11 @@ describe('dark slate + teal theme (SPEC §C.theme)', () => {
       '../../app/pages/register.vue',
       '../../app/pages/welcome.vue',
       '../../app/pages/stats.vue',
-      '../../app/components/GameCard.vue'
+      '../../app/pages/profile.vue',
+      '../../app/components/GameCard.vue',
+      '../../app/components/ProfileAccount.vue',
+      '../../app/components/ProfileConnections.vue',
+      '../../app/components/ProfileApiKeys.vue'
     ]
     for (const view of views) {
       const source = await read(view)

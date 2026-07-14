@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Account\AccountController;
+use App\Http\Controllers\Account\TokenController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Connections\ConnectionController;
 use App\Http\Controllers\Library\CollectionController;
@@ -20,6 +22,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    // V17: credential changes re-verify the password; throttled like auth.
+    Route::patch('/user', [AccountController::class, 'update'])->middleware('throttle:auth');
+
+    Route::get('/tokens', [TokenController::class, 'index']);
+    Route::post('/tokens', [TokenController::class, 'store']);
+    Route::delete('/tokens/{tokenId}', [TokenController::class, 'destroy']);
 
     Route::get('/connections', [ConnectionController::class, 'index']);
     Route::post('/connections', [ConnectionController::class, 'store']);

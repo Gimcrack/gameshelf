@@ -50,6 +50,7 @@ async function onLogout(): Promise<void> {
       </h1>
       <div v-if="user" class="flex items-center gap-3">
         <NuxtLink to="/stats" class="text-sm text-teal-400 hover:text-teal-300">Stats</NuxtLink>
+        <NuxtLink to="/profile" class="text-sm text-teal-400 hover:text-teal-300">Profile</NuxtLink>
         <span class="text-sm text-slate-400">{{ user.email }}</span>
         <button
           :disabled="isLoggingOut"
