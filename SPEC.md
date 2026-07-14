@@ -19,7 +19,8 @@ Source: `design-doc.md` v0.1.
 - SPA auth: Sanctum bearer token (stateless per V3). localStorage XSS tradeoff accepted over cookie/CSRF mode.
 - Cache: Redis — IGDB lookups, sync status, rate-limit tracking.
 - Metadata: IGDB (SteamGridDB ? box art).
-- v1 platforms: steam, gog only. Epic/Xbox/PS ⊥ (no public API).
+- v1 platforms: steam, gog only. Epic/Xbox/PS ⊥ (no public API). + `manual` pseudo-platform (T14): user-added games, synthetic connection, ⊥ sync.
+- Discovery: IGDB = catalogue source. ∀ discover calls server-proxied, Redis-cached, ≤ 4 req/s shared budget (V4 throttle). ⊥ FE direct IGDB. Added amend 2026-07-13 → T14,T15.
 - ⊥ v1: social, price tracking, native mobile.
 - API platform-agnostic from day 1 → iOS client additive later.
 - GOG API undocumented (community docs: gogapidocs) → maintenance risk.
@@ -42,6 +43,10 @@ Source: `design-doc.md` v0.1.
 - api: `GET/POST /api/collections` → GET {system: [{slug,name,description}], custom: [...]}; POST {name, filters} → 201, filter keys ⊂ library vocabulary, ⊥ nested collection. System: unplayed (playtime=0 | declared unplayed, V12), abandoned (played, untouched ≥6 mo, ≠finished), quick_wins (ttb < 300 min ∧ ttb present). Shape set T7.
 - api: `PATCH /api/user` {email? | password? + password_confirmation?, current_password !} → updated user JSON. Added T13.
 - api: `GET /api/tokens` → [{id, name, last_used_at, created_at}]; `POST /api/tokens` {name} → 201 {token: plaintext, shown once}; `DELETE /api/tokens/:id` → revoke. Sanctum PATs. Added T13.
+- api: `POST /api/library` {igdb_id} → 201 manual owned_game (canonical game reused via V7 | created from IGDB record); duplicate manual add → 200 existing. Added T14.
+- api: `DELETE /api/library/:game_id/manual` → remove manual entry only; platform-synced rows untouchable. Added T14.
+- api: `GET /api/discover/search` {q} → IGDB search proxy, each hit {igdb_id, title, cover_url, genres[], release_date, rating?, in_library}. Added T15.
+- api: `GET /api/discover/browse` {genre?, sort: rating|release|popularity, page} → IGDB catalogue proxy, same hit shape. Added T15.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
 - ext: Steam Web API `GetOwnedGames` — Steam ID + API key; OpenID identity-only, library read via public Web API; returns `playtime_2weeks`
 - ext: Steam `ResolveVanityURL` — vanity URL → SteamID64 at connect
@@ -50,7 +55,7 @@ Source: `design-doc.md` v0.1.
 - ext: IGDB `game_time_to_beats` → normally-pace seconds → games.time_to_beat_minutes; best-effort, fail ⊥ fail match. Added T7.
 - env: `STEAM_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET`, `APP_KEY` (token encryption) ! set
 - db: `users` — id, email, created_at
-- db: `platform_connections` — id, user_id, platform enum(steam|gog), external_account_id, auth_token (encrypted), refresh_token (encrypted, nullable), token_expires_at, last_synced_at, status
+- db: `platform_connections` — id, user_id, platform enum(steam|gog|manual T14), external_account_id, auth_token (encrypted), refresh_token (encrypted, nullable), token_expires_at, last_synced_at, status
 - db: `games` — canonical, 1 row per real-world game: id, igdb_id (nullable — provisional when unmatched), title, cover_url, genres[], release_date, time_to_beat_minutes (nullable, T7)
 - db: `collections` — id, user_id, name, filters JSON (library filter preset). Added T7.
 - db: `owned_games` — 1 row per (user, platform, game): id, user_id, platform_connection_id, game_id, platform_game_id, playtime_minutes (nullable), last_played_at, install_status, added_at
@@ -77,6 +82,8 @@ V15: Steam private profile → distinct connection error state + user messaging.
 V16: ∀ sync → append `playtime_snapshots` row per owned_game with playtime data. Burn-down reads snapshots.
 V17: email | password change ! verify current_password. ⊥ silent account takeover via stolen bearer token.
 V18: API token plaintext → response once @ creation only. Stored hashed (Sanctum), ⊥ retrievable later.
+V19: manual adds → per-user synthetic `manual` platform_connection (no tokens, ⊥ sync jobs). V10 upsert key applies → ⊥ duplicate manual rows per game. Manual entries deletable; synced entries ⊥ manual delete.
+V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request.
 
 ## §T tasks
 
@@ -94,6 +101,8 @@ T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), com
 T11|x|adopt Tailwind CSS in web/; restyle ∀ views dark slate + teal (login, register, library grid, GameCard, badges)|§C.styling,§C.theme
 T12|x|landing marketing page `/welcome`: hero, feature pitch (connect→dedupe→triage backlog), CTA → register/login; public route in auth.global; guests hitting `/` → `/welcome`|§C.landing,§C.theme
 T13|x|profile page `/profile`: account section (email/password change vs current_password), connected services (list + connect steam/gog + sync now + disconnect vs existing I.api), API keys (list/create w/ once-shown plaintext/revoke)|V2,V13,V17,V18,I.api,§C.theme
+T14|.|manual add: `manual` platform enum + synthetic connection, POST /api/library {igdb_id}, manual delete, library UI add/remove affordances|V1,V7,V10,V19,I.api
+T15|.|discover: /api/discover search+browse (IGDB proxy, Redis cache, in_library overlay), FE /discover page — search bar, browse grid w/ genre/sort, add-to-library button|V4,V19,V20,I.igdb,§C.discovery,§C.theme
 
 ## §B bugs
 
