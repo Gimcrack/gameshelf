@@ -26,6 +26,7 @@ Source: `design-doc.md` v0.1.
 - Auth: own accounts — email/password + Sanctum tokens. Steam OpenID ⊥ identity (connection only).
 - Hosting: Laravel Forge + single VPS (API, queue, Redis, DB). Nuxt SPA static via same box | CDN.
 - Nuxt mode: SPA (`ssr: false`). All views behind auth, no SEO need. Holds in Nuxt 4 — upgrade ⊥ drop `ssr: false`.
+- Local dev topology: API via Herd → `http://gameshelf.test` (Sites symlink → `api/`), FE `nuxt dev` :3000, `web/.env` NUXT_PUBLIC_API_BASE=http://gameshelf.test. API unreachable → browser reports CORS-shaped error ∴ check server up before touching CORS config. Laravel CORS = framework defaults (ACAO *), no cors.php published.
 
 ## §I interfaces
 
@@ -84,3 +85,4 @@ T10|x|migrate web/ Nuxt 3 → 4: bump nuxt dep, `app/` srcDir (already set), com
 ## §B bugs
 
 id|date|cause|fix
+B1|2026-07-13|browser "CORS" error local = no server bound to apiBase http://localhost:8000; Herd site `gameshelf` pointed at `web/.output/public` ⊥ `api/public`; Laravel CORS defaults fine (ACAO *)|Herd relink → api/, web/.env apiBase, §C.dev-topology
