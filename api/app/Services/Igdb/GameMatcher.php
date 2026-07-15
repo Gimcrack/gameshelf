@@ -5,6 +5,8 @@ namespace App\Services\Igdb;
 use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\PlatformConnection;
+use App\Models\User;
+use App\Services\Library\GameRematch;
 use Illuminate\Support\Facades\Cache;
 
 class GameMatcher
@@ -17,8 +19,10 @@ class GameMatcher
     // don't (e.g. "LEGO® Worlds" vs IGDB's "LEGO Worlds").
     private const TRADEMARK_SYMBOLS = '/[®™©]/u';
 
-    public function __construct(private readonly IgdbClient $client)
-    {
+    public function __construct(
+        private readonly IgdbClient $client,
+        private readonly GameRematch $rematch,
+    ) {
     }
 
     /**
@@ -34,6 +38,39 @@ class GameMatcher
         foreach ($unmatched as $ownedGame) {
             $this->match($connection->platform, $ownedGame);
         }
+    }
+
+    /**
+     * T50/V48: match a single provisional union game (wishlist-only or
+     * meta-orphan) that has no owned row and so no platform_game_id cache key.
+     * Title-searches like connection matching (V27 glyph fallback), V26-tolerant,
+     * then repoints the caller's union rows via GameRematch (V34) — wishlist and
+     * user_game_meta, not owned_games only.
+     */
+    public function matchGame(User $user, Game $game): void
+    {
+        if ($game->igdb_id !== null) {
+            return;
+        }
+
+        // V26: a transient failure never aborts the batch — no state change,
+        // game stays provisional and is retried next sync.
+        try {
+            $igdb = $this->searchWithFallback($game->title);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return;
+        }
+
+        // V11: no match — provisional row stays visible, retried next sync.
+        if ($igdb === null) {
+            return;
+        }
+
+        // V34: union-aware repoint reuses V7 canonical dedupe and pulls full
+        // canonical attrs via GameFromIgdb (search hit shape is thin).
+        $this->rematch->apply($user, $game, (int) $igdb['id']);
     }
 
     private function match(string $platform, OwnedGame $ownedGame): void

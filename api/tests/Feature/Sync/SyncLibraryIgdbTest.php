@@ -3,12 +3,15 @@
 namespace Tests\Feature\Sync;
 
 use App\Jobs\MatchConnectionIgdb;
+use App\Jobs\MatchGameIgdb;
 use App\Jobs\RefreshGameIgdb;
 use App\Jobs\SyncLibraryIgdb;
 use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\PlatformConnection;
 use App\Models\User;
+use App\Models\UserGameMeta;
+use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -26,6 +29,26 @@ class SyncLibraryIgdbTest extends TestCase
             'game_id' => $game->id,
             'platform_game_id' => $platformGameId,
             'added_at' => now(),
+        ]);
+    }
+
+    private function wish(User $user, Game $game): WishlistItem
+    {
+        return WishlistItem::create([
+            'user_id' => $user->id,
+            'game_id' => $game->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+        ]);
+    }
+
+    private function meta(User $user, Game $game): UserGameMeta
+    {
+        return UserGameMeta::create([
+            'user_id' => $user->id,
+            'game_id' => $game->id,
+            'status' => 'finished',
         ]);
     }
 
@@ -101,5 +124,83 @@ class SyncLibraryIgdbTest extends TestCase
 
         Queue::assertNotPushed(MatchConnectionIgdb::class);
         Queue::assertNotPushed(RefreshGameIgdb::class);
+    }
+
+    /**
+     * T50/V48 (B15): a provisional wishlist-only game (no owned row, no
+     * connection to ride) gets its own per-game match job.
+     */
+    public function test_provisional_wishlist_game_gets_per_game_match_job(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $provisional = Game::create(['title' => 'Wishlisted Unmatched']);
+        $this->wish($user, $provisional);
+
+        (new SyncLibraryIgdb($user->id))->handle();
+
+        Queue::assertPushed(
+            MatchGameIgdb::class,
+            fn ($job) => $job->userId === $user->id && $job->gameId === $provisional->id,
+        );
+        Queue::assertNotPushed(RefreshGameIgdb::class);
+    }
+
+    /**
+     * T50/V48: a provisional meta-orphan game (only a user_game_meta row) is
+     * matched by bulk sync too.
+     */
+    public function test_provisional_meta_orphan_gets_per_game_match_job(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $provisional = Game::create(['title' => 'Meta Only Unmatched']);
+        $this->meta($user, $provisional);
+
+        (new SyncLibraryIgdb($user->id))->handle();
+
+        Queue::assertPushed(
+            MatchGameIgdb::class,
+            fn ($job) => $job->userId === $user->id && $job->gameId === $provisional->id,
+        );
+    }
+
+    /**
+     * T50/V48: refresh half covers the union — an already-matched
+     * wishlist game gets a refresh job (was ownedGames()-only).
+     */
+    public function test_matched_wishlist_game_gets_refresh_job(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+
+        $matched = Game::create(['igdb_id' => 1942, 'title' => 'The Witcher 3']);
+        $this->wish($user, $matched);
+
+        (new SyncLibraryIgdb($user->id))->handle();
+
+        Queue::assertPushed(RefreshGameIgdb::class, fn ($job) => $job->gameId === $matched->id);
+        Queue::assertNotPushed(MatchGameIgdb::class);
+    }
+
+    /**
+     * T50/V48: an owned provisional rides its connection's match job (V4
+     * cache path) — it must NOT also get a per-game title-search job.
+     */
+    public function test_owned_provisional_not_dispatched_as_per_game_match(): void
+    {
+        Queue::fake();
+        $user = User::factory()->create();
+        $connection = PlatformConnection::factory()->create(['user_id' => $user->id, 'status' => 'ok']);
+
+        $provisional = Game::create(['title' => 'Owned Unmatched']);
+        $this->own($connection, $provisional, '620');
+
+        (new SyncLibraryIgdb($user->id))->handle();
+
+        Queue::assertPushed(MatchConnectionIgdb::class, 1);
+        Queue::assertNotPushed(MatchGameIgdb::class);
     }
 }
