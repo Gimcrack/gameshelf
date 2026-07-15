@@ -52,5 +52,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });
+
+        // V39: gates IGDB fan-out job starts. 2 jobs/s × ~2 IGDB calls per
+        // job stays inside the shared 4 req/s IGDB budget (§C discovery,
+        // V4); IgdbClient::throttle remains the per-request final guard.
+        RateLimiter::for('igdb-sync', function () {
+            return Limit::perSecond(2);
+        });
     }
 }

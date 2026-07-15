@@ -2,14 +2,18 @@
 
 namespace App\Jobs;
 
-use App\Models\Game;
 use App\Models\User;
-use App\Services\Igdb\GameMatcher;
-use App\Services\Library\GameIgdbRefresh;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Collection;
 
+/**
+ * T31/V38 + T32/V39: bulk "sync all IGDB" orchestrator. Makes no IGDB
+ * calls itself (B8: the monolithic version serial-looped the whole
+ * library and blew the queue timeout) — it only fans out bounded child
+ * jobs: one MatchConnectionIgdb per connection, one RefreshGameIgdb per
+ * already-matched game.
+ */
 class SyncLibraryIgdb implements ShouldQueue
 {
     use Queueable;
@@ -18,11 +22,6 @@ class SyncLibraryIgdb implements ShouldQueue
     {
     }
 
-    /**
-     * T31/V38: bulk "sync all IGDB" — matches provisional games across
-     * every connection, then refreshes already-matched games' canonical
-     * attrs. One game's failure never aborts the rest (mirrors V26).
-     */
     public function handle(): void
     {
         $user = User::find($this->userId);
@@ -31,24 +30,17 @@ class SyncLibraryIgdb implements ShouldQueue
             return;
         }
 
-        // Snapshot before matching runs — a game matched during this same
-        // pass already has full canonical data from that fetch (identical
-        // to what refresh() would do), so re-fetching it immediately after
-        // is pure waste (and needless extra IGDB call volume).
+        // Snapshot before match jobs run — a game matched during this same
+        // pass gets full canonical data from that fetch already, so also
+        // dispatching a refresh for it would be pure duplicate IGDB volume.
         $alreadyMatchedIds = $this->matchedGameIds($user);
 
-        $this->matchProvisional($user);
-        $this->refreshMatched($alreadyMatchedIds);
-    }
-
-    private function matchProvisional(User $user): void
-    {
         foreach ($user->platformConnections as $connection) {
-            try {
-                app(GameMatcher::class)->matchConnection($connection);
-            } catch (\Throwable $e) {
-                report($e);
-            }
+            MatchConnectionIgdb::dispatch($connection->id);
+        }
+
+        foreach ($alreadyMatchedIds as $gameId) {
+            RefreshGameIgdb::dispatch($gameId);
         }
     }
 
@@ -62,25 +54,5 @@ class SyncLibraryIgdb implements ShouldQueue
             ->whereNotNull('games.igdb_id')
             ->distinct()
             ->pluck('games.id');
-    }
-
-    /**
-     * @param  Collection<int, int>  $gameIds
-     */
-    private function refreshMatched(Collection $gameIds): void
-    {
-        $refresh = app(GameIgdbRefresh::class);
-
-        foreach ($gameIds as $gameId) {
-            try {
-                $game = Game::find($gameId);
-
-                if ($game !== null) {
-                    $refresh->refresh($game);
-                }
-            } catch (\Throwable $e) {
-                report($e);
-            }
-        }
     }
 }

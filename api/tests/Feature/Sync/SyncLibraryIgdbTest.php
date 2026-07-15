@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Sync;
 
+use App\Jobs\MatchConnectionIgdb;
+use App\Jobs\RefreshGameIgdb;
 use App\Jobs\SyncLibraryIgdb;
 use App\Models\Game;
 use App\Models\OwnedGame;
@@ -9,6 +11,7 @@ use App\Models\PlatformConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class SyncLibraryIgdbTest extends TestCase
@@ -27,81 +30,57 @@ class SyncLibraryIgdbTest extends TestCase
     }
 
     /**
-     * T31/V38: matches provisional games across every connection AND
-     * refreshes already-matched games' canonical attrs, in one run.
+     * T32/V39 (B8): the orchestrator makes no IGDB calls itself — it fans
+     * out one MatchConnectionIgdb per connection and one RefreshGameIgdb
+     * per already-matched game.
      */
-    public function test_matches_provisional_and_refreshes_matched_games(): void
+    public function test_fans_out_match_and_refresh_jobs(): void
     {
-        Http::fake([
-            'id.twitch.tv/oauth2/token*' => Http::response([
-                'access_token' => 'twitch-app-token',
-                'expires_in' => 3600,
-            ]),
-            'api.igdb.com/v4/games' => Http::sequence()
-                // GameMatcher's search for the provisional game.
-                ->push([['id' => 72, 'name' => 'Portal 2', 'genres' => []]])
-                // GameIgdbRefresh's getGame for the already-matched game.
-                ->push([['id' => 1942, 'name' => 'The Witcher 3 (Updated)', 'genres' => []]]),
-            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
-        ]);
+        Queue::fake();
+        Http::fake();
         $user = User::factory()->create();
         $connection = PlatformConnection::factory()->create(['user_id' => $user->id, 'status' => 'ok']);
 
         $provisional = Game::create(['title' => 'Some Weird Title']);
         $this->own($connection, $provisional, '620');
 
-        $matched = Game::create(['igdb_id' => 1942, 'title' => 'The Witcher 3 (Stale)']);
+        $matched = Game::create(['igdb_id' => 1942, 'title' => 'The Witcher 3']);
         $this->own($connection, $matched, '292030');
 
         (new SyncLibraryIgdb($user->id))->handle();
 
-        $this->assertSame(72, $provisional->fresh()->igdb_id);
-        $this->assertSame('The Witcher 3 (Updated)', $matched->fresh()->title);
+        Http::assertNothingSent();
+        Queue::assertPushed(MatchConnectionIgdb::class, fn ($job) => $job->connectionId === $connection->id);
+        Queue::assertPushed(RefreshGameIgdb::class, fn ($job) => $job->gameId === $matched->id);
+        Queue::assertNotPushed(RefreshGameIgdb::class, fn ($job) => $job->gameId === $provisional->id);
     }
 
     /**
-     * V26 (extended by V38): one game's IGDB failure never aborts the rest
-     * of the batch.
+     * V39: a game matched during this same pass gets full canonical data
+     * from that fetch — no refresh job dispatched for it (no duplicate
+     * IGDB volume). Provisional games ride their connection's match job.
      */
-    public function test_one_game_failure_does_not_abort_the_rest(): void
+    public function test_provisional_games_get_no_refresh_job(): void
     {
-        Http::fake([
-            'id.twitch.tv/oauth2/token*' => Http::response([
-                'access_token' => 'twitch-app-token',
-                'expires_in' => 3600,
-            ]),
-            'api.igdb.com/v4/games' => Http::sequence()
-                ->push(null, 500) // matcher search for the provisional game fails
-                ->push([['id' => 1942, 'name' => 'The Witcher 3 (Updated)', 'genres' => []]]),
-            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
-        ]);
+        Queue::fake();
         $user = User::factory()->create();
         $connection = PlatformConnection::factory()->create(['user_id' => $user->id, 'status' => 'ok']);
 
-        $provisional = Game::create(['title' => 'Fails To Match']);
+        $provisional = Game::create(['title' => 'Unmatched']);
         $this->own($connection, $provisional, '111');
-
-        $matched = Game::create(['igdb_id' => 1942, 'title' => 'The Witcher 3 (Stale)']);
-        $this->own($connection, $matched, '292030');
 
         (new SyncLibraryIgdb($user->id))->handle();
 
-        $this->assertNull($provisional->fresh()->igdb_id);
-        $this->assertSame('The Witcher 3 (Updated)', $matched->fresh()->title);
+        Queue::assertPushed(MatchConnectionIgdb::class, 1);
+        Queue::assertNotPushed(RefreshGameIgdb::class);
     }
 
     /**
-     * V38: only the caller's own games are touched.
+     * V38: only the caller's own connections and games fan out.
      */
-    public function test_only_syncs_the_given_users_games(): void
+    public function test_only_fans_out_the_given_users_games(): void
     {
-        Http::fake([
-            'id.twitch.tv/oauth2/token*' => Http::response([
-                'access_token' => 'twitch-app-token',
-                'expires_in' => 3600,
-            ]),
-            'api.igdb.com/v4/games' => Http::response([]),
-        ]);
+        Queue::fake();
         $user = User::factory()->create();
         $other = User::factory()->create();
         $othersConnection = PlatformConnection::factory()->create(['user_id' => $other->id, 'status' => 'ok']);
@@ -110,6 +89,17 @@ class SyncLibraryIgdbTest extends TestCase
 
         (new SyncLibraryIgdb($user->id))->handle();
 
-        $this->assertSame('Not Mine', $othersGame->fresh()->title);
+        Queue::assertNotPushed(MatchConnectionIgdb::class);
+        Queue::assertNotPushed(RefreshGameIgdb::class);
+    }
+
+    public function test_missing_user_dispatches_nothing(): void
+    {
+        Queue::fake();
+
+        (new SyncLibraryIgdb(999999))->handle();
+
+        Queue::assertNotPushed(MatchConnectionIgdb::class);
+        Queue::assertNotPushed(RefreshGameIgdb::class);
     }
 }
