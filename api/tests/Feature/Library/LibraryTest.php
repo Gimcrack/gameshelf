@@ -424,9 +424,37 @@ class LibraryTest extends TestCase
         $this->assertSame(['Everyone', 'Unrated'], $titles);
     }
 
-    public function test_rejects_invalid_esrb_value(): void
+    /**
+     * V43/B10: esrb_rating stores IGDB label strings verbatim ("E10+" ≠
+     * "E10") — every facet-emitted value must be accepted by the filter
+     * param and match by equality. No hardcoded label enum.
+     */
+    public function test_v43_facet_esrb_values_round_trip_to_filter(): void
     {
-        $this->getJson('/api/library?esrb[]=X')->assertUnprocessable();
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Everyone Tenplus', ['esrb_rating' => 'E10+']), 10);
+        $this->own($steam, $this->game('Unrated'), 10);
+
+        $facets = $this->getJson('/api/library/facets')->assertOk()->json();
+        $this->assertSame(['E10+', 'none'], $facets['esrb_ratings']);
+
+        foreach ($facets['esrb_ratings'] as $value) {
+            $this->getJson('/api/library?esrb[]='.urlencode($value))->assertOk();
+        }
+
+        $titles = array_column(
+            $this->getJson('/api/library?esrb[]='.urlencode('E10+'))->json(),
+            'title',
+        );
+        $this->assertSame(['Everyone Tenplus'], $titles);
+    }
+
+    // V43: unknown label matches nothing — 200 empty, ⊥ 422.
+    public function test_unknown_esrb_value_matches_nothing(): void
+    {
+        $this->own($this->connection('steam'), $this->game('Mature', ['esrb_rating' => 'M']), 10);
+
+        $this->getJson('/api/library?esrb[]=X')->assertOk()->assertExactJson([]);
     }
 
     /**
