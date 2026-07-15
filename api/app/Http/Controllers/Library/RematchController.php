@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Library;
 
 use App\Http\Controllers\Controller;
 use App\Models\Game;
+use App\Models\UserGameMeta;
+use App\Models\WishlistItem;
 use App\Services\Library\GameRematch;
 use App\Services\Library\LibraryQuery;
 use Illuminate\Http\JsonResponse;
@@ -20,9 +22,17 @@ class RematchController extends Controller
      */
     public function store(Request $request, Game $game, GameRematch $rematch, LibraryQuery $library): JsonResponse
     {
-        $ownsGame = $request->user()->ownedGames()->where('game_id', $game->id)->exists();
+        // T47/V42: membership = library union, not owned-only — a wishlist or
+        // meta-orphan entry is fixable too (mirrors LibraryQuery::forGame).
+        $user = $request->user();
+        $inLibrary = $user->ownedGames()->where('game_id', $game->id)->exists()
+            || WishlistItem::where('user_id', $user->id)
+                ->where('game_id', $game->id)
+                ->whereNull('suppressed_at')
+                ->exists()
+            || UserGameMeta::where('user_id', $user->id)->where('game_id', $game->id)->exists();
 
-        abort_unless($ownsGame, Response::HTTP_NOT_FOUND);
+        abort_unless($inLibrary, Response::HTTP_NOT_FOUND);
 
         $validated = $request->validate([
             'igdb_id' => ['required', 'integer', 'min:1'],

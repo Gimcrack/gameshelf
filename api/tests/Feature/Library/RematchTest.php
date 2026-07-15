@@ -6,6 +6,8 @@ use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\PlatformConnection;
 use App\Models\User;
+use App\Models\UserGameMeta;
+use App\Models\WishlistItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -52,6 +54,17 @@ class RematchTest extends TestCase
     private function connection(): PlatformConnection
     {
         return PlatformConnection::factory()->create(['user_id' => $this->user->id, 'status' => 'ok']);
+    }
+
+    private function wish(User $user, Game $game): WishlistItem
+    {
+        return WishlistItem::create([
+            'user_id' => $user->id,
+            'game_id' => $game->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+        ]);
     }
 
     /**
@@ -137,11 +150,100 @@ class RematchTest extends TestCase
         $this->assertDatabaseCount('games', 1);
     }
 
-    public function test_rematch_404_when_game_not_owned(): void
+    public function test_rematch_404_when_game_not_in_library(): void
     {
+        // Not owned, wishlisted, nor meta'd by the caller — B13/T47 union
+        // membership still excludes it.
         $game = Game::create(['igdb_id' => 505, 'title' => 'Not Mine']);
 
         $this->postJson("/api/library/{$game->id}/rematch", ['igdb_id' => 505])->assertNotFound();
+    }
+
+    /**
+     * B13/V34/T47: a wishlist-only game (no owned row — e.g. B11 provisional)
+     * is fixable; the wishlist row is repointed to the corrected canonical row.
+     */
+    public function test_rematch_wishlist_only_game(): void
+    {
+        $this->fakeIgdbGame(510, 'Correct Wishlist Title');
+        $provisional = Game::create(['title' => 'Provisional Wish']);
+        $wish = $this->wish($this->user, $provisional);
+
+        $response = $this->postJson("/api/library/{$provisional->id}/rematch", ['igdb_id' => 510])
+            ->assertOk();
+
+        $this->assertSame('Correct Wishlist Title', $response->json('title'));
+        $target = Game::where('igdb_id', 510)->firstOrFail();
+        $this->assertSame($target->id, $wish->fresh()->game_id);
+        // Old provisional had no other refs → cleaned up.
+        $this->assertDatabaseMissing('games', ['id' => $provisional->id]);
+    }
+
+    /**
+     * B13/V34/T47: a meta-orphan (user_game_meta only, no owned/wishlist) is
+     * fixable — the meta follows the game so status/rating survive (V6 content).
+     */
+    public function test_rematch_meta_orphan_game(): void
+    {
+        $this->fakeIgdbGame(511, 'Correct Meta Title');
+        $provisional = Game::create(['title' => 'Provisional Meta']);
+        $meta = UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $provisional->id,
+            'status' => 'finished',
+            'rating' => 5,
+        ]);
+
+        $this->postJson("/api/library/{$provisional->id}/rematch", ['igdb_id' => 511])->assertOk();
+
+        $target = Game::where('igdb_id', 511)->firstOrFail();
+        $this->assertSame($target->id, $meta->fresh()->game_id);
+        $this->assertSame(5, (int) $meta->fresh()->rating);
+        $this->assertDatabaseMissing('games', ['id' => $provisional->id]);
+    }
+
+    /**
+     * V21: rematching a wishlist game onto an igdb_id the caller already owns
+     * must not create an owned ∩ wishlist overlap — the wishlist row is dropped.
+     */
+    public function test_rematch_wishlist_onto_owned_drops_wishlist_row_v21(): void
+    {
+        $this->fakeIgdbGame(512, 'Owned Already');
+        $owned = Game::create(['igdb_id' => 512, 'title' => 'Owned Already']);
+        $this->own($this->connection(), $owned);
+        $provisional = Game::create(['title' => 'Wish Dupe']);
+        $this->wish($this->user, $provisional);
+
+        $this->postJson("/api/library/{$provisional->id}/rematch", ['igdb_id' => 512])->assertOk();
+
+        // V21: no wishlist row survives for the now-owned game.
+        $this->assertDatabaseMissing('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $owned->id,
+        ]);
+        $this->assertSame(0, WishlistItem::where('user_id', $this->user->id)->count());
+        $this->assertDatabaseMissing('games', ['id' => $provisional->id]);
+    }
+
+    /**
+     * V34/T47: orphan cleanup respects the union — a provisional row still
+     * wishlisted by another user is real data, kept when the caller rematches.
+     */
+    public function test_rematch_keeps_provisional_still_referenced_by_other_user(): void
+    {
+        $this->fakeIgdbGame(513, 'Fixed For Me Only');
+        $provisional = Game::create(['title' => 'Shared Provisional']);
+        $mine = $this->wish($this->user, $provisional);
+        $other = User::factory()->create();
+        $theirs = $this->wish($other, $provisional);
+
+        $this->postJson("/api/library/{$provisional->id}/rematch", ['igdb_id' => 513])->assertOk();
+
+        $target = Game::where('igdb_id', 513)->firstOrFail();
+        $this->assertSame($target->id, $mine->fresh()->game_id);
+        // Other user still references it → not deleted, their row untouched.
+        $this->assertDatabaseHas('games', ['id' => $provisional->id]);
+        $this->assertSame($provisional->id, $theirs->fresh()->game_id);
     }
 
     public function test_rematch_rejects_unknown_igdb_id(): void
