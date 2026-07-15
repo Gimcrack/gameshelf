@@ -100,6 +100,7 @@ V23: Steam sync ⊥ pass `include_played_free_games` → matches Steam default, 
 V24: Steam sync reflects current Steam state, ⊥ just accretes — owned_games rows w/ platform_game_id ∉ fresh fetch pruned each sync (covers legacy noise + genuinely-removed games). Snapshot history cascades w/ row (V16 data meaningless off-library). V15 null-response (private) short-circuits before reconciliation → never wrongly wipes on privacy flip.
 V25: Steam connect ! resolve+display identity (persona_name/avatar) → user ! confirm before `platform_connections` row created. ⊥ blind-linked accounts.
 V26: GameMatcher single-title failure (network/auth/rate-limit) ⊥ abort rest of batch → try/catch around searchGame, ⊥ MISS cache write on exception (retried next sync, ≠ genuine no-match). Mirrors existing timeToBeat tolerance.
+V27: GameMatcher retries search once w/ trademark glyphs (®™©) stripped when raw title misses — Steam titles carry glyphs IGDB canonical titles ⊥. Retry only fires when stripping changes query (⊥ extra IGDB call on genuine misses: non-game software, edition-suffix mismatches stay correctly unmatched).
 
 ## §T tasks
 
@@ -107,7 +108,7 @@ id|status|task|cites
 T1|x|Laravel API skeleton + Sanctum auth + email/password accounts|V3
 T2|x|Nuxt skeleton + auth flow → Sanctum|V3
 T3|x|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshots|V2,V5,V8,V9,V10,V15,V16,V23,V24,I.steam
-T4|x|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,V26,I.igdb
+T4|x|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,V26,V27,I.igdb
 T5|x|unified library UI: grid, filters, sort, disconnect badges|V1,V12,V13,I.api
 T6|x|GOG connect + token refresh + sync — validates multi-platform dedupe|V1,V2,V8,V10,V14,I.gog
 T7|x|tags/status/smart collections (quick wins conditional)|V6,V12,I.api
@@ -134,3 +135,4 @@ B2|2026-07-14|T20 dev: V22 unspecified for remote removal — pull-absent + gog_
 B3|2026-07-14|SteamClient::getOwnedGames set `include_played_free_games=1` → Steam auto-included F2P titles user never chose ("anyone technically owns" per Steam docs)|V23
 B4|2026-07-14|SteamSyncer only ever upserted, ⊥ removed rows absent from fresh fetch → V23 fix stops new noise but existing stale rows (B3, + any genuinely-removed games) persist forever|V24
 B5|2026-07-15|GameMatcher::match() ⊥ try/catch around searchGame — early syncs (before Twitch creds configured) threw on first attempt, aborting rest of batch → 529/770 games stuck provisional (no cover) w/ no retry path. Live-verified 19/20 sample matches instantly once creds valid|V26
+B6|2026-07-15|GameMatcher searched raw Steam title only — titles w/ ®™© (LEGO® Worlds, Titanfall® 2) never matched IGDB's glyph-free canonical titles, stayed provisional forever (no retry differs by title, cache MISS permanent)|V27

@@ -150,6 +150,59 @@ class GameMatcherTest extends TestCase
         $this->assertSame(72, $succeedsGame->fresh()->igdb_id);
     }
 
+    /**
+     * V27: raw title miss retries once with trademark glyphs stripped.
+     */
+    public function test_trademark_glyphs_stripped_on_retry(): void
+    {
+        Http::fake([
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::sequence()
+                ->push([]) // raw "LEGO® Worlds" search — miss
+                ->push([[
+                    'id' => 4001,
+                    'name' => 'LEGO Worlds',
+                    'genres' => [],
+                ]]),
+            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
+        ]);
+        [, $game, $connection] = $this->provisionalOwnedGame('LEGO® Worlds', '351080');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $game->refresh();
+        $this->assertSame(4001, $game->igdb_id);
+        $this->assertSame('LEGO Worlds', $game->title);
+
+        $requests = Http::recorded(fn ($request) => str_contains($request->url(), 'api.igdb.com/v4/games'))
+            ->values();
+        $this->assertCount(2, $requests);
+        $this->assertStringContainsString('LEGO® Worlds', $requests[0][0]->body());
+        $this->assertStringContainsString('LEGO Worlds', $requests[1][0]->body());
+        $this->assertStringNotContainsString('®', $requests[1][0]->body());
+    }
+
+    /**
+     * V27: no retry (no extra IGDB call) when stripping wouldn't change the
+     * query — a genuine miss stays a single request.
+     */
+    public function test_no_fallback_retry_when_title_has_no_trademark_glyphs(): void
+    {
+        $this->fakeIgdb([]);
+        [, $game, $connection] = $this->provisionalOwnedGame('VoiceAttack', '780200');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $game->refresh();
+        $this->assertNull($game->igdb_id);
+
+        $requests = Http::recorded(fn ($request) => str_contains($request->url(), 'api.igdb.com/v4/games'));
+        $this->assertCount(1, $requests);
+    }
+
     public function test_sync_job_matches_after_ingestion(): void
     {
         Http::fake([

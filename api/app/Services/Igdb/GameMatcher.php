@@ -13,6 +13,10 @@ class GameMatcher
 
     private const MISS_TTL_HOURS = 24;
 
+    // V27: Steam titles carry literal ®/™/© glyphs IGDB's canonical titles
+    // don't (e.g. "LEGO® Worlds" vs IGDB's "LEGO Worlds").
+    private const TRADEMARK_SYMBOLS = '/[®™©]/u';
+
     public function __construct(private readonly IgdbClient $client)
     {
     }
@@ -47,7 +51,7 @@ class GameMatcher
         // simply retried on the next sync instead of stuck provisional
         // forever.
         try {
-            $igdb = $cached ?? $this->client->searchGame($ownedGame->game->title);
+            $igdb = $cached ?? $this->searchWithFallback($ownedGame->game->title);
         } catch (\Throwable $e) {
             report($e);
 
@@ -64,6 +68,31 @@ class GameMatcher
 
         Cache::forever($cacheKey, $igdb);
         $this->canonicalize($ownedGame, $igdb);
+    }
+
+    /**
+     * V27: retry once with trademark glyphs stripped when the raw title
+     * misses. Genuinely unmatched titles (non-game software, edition-suffix
+     * mismatches) still correctly miss — the retry only fires when stripping
+     * actually changes the query.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function searchWithFallback(string $title): ?array
+    {
+        $result = $this->client->searchGame($title);
+
+        if ($result !== null) {
+            return $result;
+        }
+
+        $cleaned = trim(preg_replace(self::TRADEMARK_SYMBOLS, '', $title));
+
+        if ($cleaned === $title || $cleaned === '') {
+            return null;
+        }
+
+        return $this->client->searchGame($cleaned);
     }
 
     /**
