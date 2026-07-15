@@ -4,6 +4,7 @@ import type { DiscoverHit, DiscoverSort } from '../composables/useDiscover'
 
 const { hits, pending, error, search, browse, addToLibrary, addToWishlist } = useDiscover()
 const { rails, fetchSimilar, flagHit: flagSimilarHit } = useSimilarGames()
+const { franchises, fetchFranchises, flagHit: flagFranchiseHit } = useFranchiseGaps()
 
 const q = ref('')
 const genre = ref('')
@@ -21,6 +22,7 @@ function loadBrowse(): Promise<void> {
 onMounted(() => {
   loadBrowse()
   fetchSimilar()
+  fetchFranchises()
 })
 
 let debounce: ReturnType<typeof setTimeout> | undefined
@@ -62,12 +64,14 @@ async function run(igdbId: number, action: (id: number) => Promise<void>): Promi
 async function onAddToLibrary(hit: DiscoverHit): Promise<void> {
   if (await run(hit.igdb_id, addToLibrary)) {
     flagSimilarHit(hit.igdb_id, { in_library: true, in_wishlist: false })
+    flagFranchiseHit(hit.igdb_id, { in_library: true, in_wishlist: false })
   }
 }
 
 async function onAddToWishlist(hit: DiscoverHit): Promise<void> {
   if (await run(hit.igdb_id, addToWishlist)) {
     flagSimilarHit(hit.igdb_id, { in_wishlist: true })
+    flagFranchiseHit(hit.igdb_id, { in_wishlist: true })
   }
 }
 </script>
@@ -154,6 +158,27 @@ async function onAddToWishlist(hit: DiscoverHit): Promise<void> {
         <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
           <DiscoverHitCard
             v-for="hit in rail.similar"
+            :key="hit.igdb_id"
+            :hit="hit"
+            :busy="busyId === hit.igdb_id"
+            @add-to-library="onAddToLibrary"
+            @add-to-wishlist="onAddToWishlist"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!searching && franchises.length" class="mt-10 space-y-8">
+      <div v-for="gap in franchises" :key="gap.franchise">
+        <h2 class="mb-1 text-sm font-semibold text-slate-300">
+          Complete the series: <span class="text-teal-400">{{ gap.franchise }}</span>
+        </h2>
+        <p class="mb-3 text-xs text-slate-500">
+          You own: {{ gap.owned.map((g) => g.title).join(', ') }}
+        </p>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
+          <DiscoverHitCard
+            v-for="hit in gap.missing"
             :key="hit.igdb_id"
             :hit="hit"
             :busy="busyId === hit.igdb_id"

@@ -136,7 +136,7 @@ T14|x|manual add: `manual` platform enum + synthetic connection, POST /api/libra
 T15|x|discover: /api/discover search+browse (IGDB proxy, Redis cache, in_library overlay), FE /discover page — search bar, browse grid w/ genre/sort, add-to-library button|V4,V19,V20,I.igdb,§C.discovery,§C.theme
 T16|x|similar-games rails: seeds from top owned, IGDB similar_games cached, "Because you played X" sections on /discover|V4,V20,§C.discovery
 T17|x|wishlist core: wishlist_items table, GET/POST/DELETE /api/wishlist (games created from igdb_id via shared GameFromIgdb service), in_wishlist overlay, wishlist page + promote-to-owned flow|V7,V20,V21,I.api
-T18|.|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
+T18|x|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
 T19|.|upcoming releases: IGDB release_dates ∈ 6 mo window × caller top genres, /api/discover/upcoming, rail on /discover|V4,V20,§C.discovery
 T20|x|wishlist platform sync: queued job — pull steam (read-only, appdetails titles) + gog wishlists, tombstone suppression, push local add/remove → GOG via external_games mapping, POST /api/wishlist/sync throttled, sync status in wishlist UI|V8,V14,V15,V21,V22,I.gog,I.steam,I.igdb
 T21|x|Steam connect identity confirm: resolve+preview (persona_name/avatar) before creating connection, FE two-step confirm|V25,I.steam

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Discover;
 
 use App\Http\Controllers\Controller;
 use App\Services\Discover\DiscoverCatalog;
+use App\Services\Discover\FranchiseGaps;
 use App\Services\Discover\OwnershipOverlay;
 use App\Services\Discover\SimilarGames;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,7 @@ class DiscoverController extends Controller
         private readonly DiscoverCatalog $catalog,
         private readonly OwnershipOverlay $overlay,
         private readonly SimilarGames $similarGames,
+        private readonly FranchiseGaps $franchiseGaps,
     ) {
     }
 
@@ -52,5 +54,13 @@ class DiscoverController extends Controller
     public function similar(Request $request): JsonResponse
     {
         return response()->json($this->similarGames->railsFor($request->user()));
+    }
+
+    /**
+     * I.api T18: "complete the series" rails from the caller's owned games.
+     */
+    public function franchises(Request $request): JsonResponse
+    {
+        return response()->json($this->franchiseGaps->forUser($request->user()));
     }
 }

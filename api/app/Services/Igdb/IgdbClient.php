@@ -23,6 +23,12 @@ class IgdbClient
     private const SIMILAR_FIELDS = 'similar_games.name,similar_games.cover.url,'
         .'similar_games.genres.name,similar_games.first_release_date,similar_games.total_rating';
 
+    // T18: 2-level nested expansion (franchises → games) — one call per
+    // owned game returns every franchise it belongs to plus that
+    // franchise's full game list.
+    private const FRANCHISE_FIELDS = 'franchises.name,franchises.games.name,franchises.games.cover.url,'
+        .'franchises.games.genres.name,franchises.games.first_release_date,franchises.games.total_rating';
+
     // V30: themes/keywords/game_modes ride along on the same request that
     // already fetches genres — no extra IGDB call, no throttle/cache change.
     private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,first_release_date';
@@ -182,6 +188,36 @@ class IgdbClient
         $records = $response->json('0.similar_games');
 
         return is_array($records) ? $records : [];
+    }
+
+    /**
+     * IGDB `franchises` (each with its full `games` list) for one owned
+     * game. Empty when IGDB has no franchise data for the id.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function franchisesFor(int $igdbId): array
+    {
+        $this->throttle();
+
+        $query = sprintf(
+            'fields %s; where id = %d; limit 1;',
+            self::FRANCHISE_FIELDS,
+            $igdbId,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $franchises = $response->json('0.franchises');
+
+        return is_array($franchises) ? $franchises : [];
     }
 
     /**
