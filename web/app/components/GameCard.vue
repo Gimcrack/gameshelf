@@ -4,6 +4,8 @@ import {
   formatPlaytime,
   hasDisconnectedPlatform,
   hasManualEntry,
+  nextRating,
+  ratingStars,
   type LibraryEntry
 } from '../utils/library'
 import type { Collection } from '../composables/useCollections'
@@ -13,11 +15,13 @@ const emit = defineEmits<{
   (e: 'remove-manual', gameId: number): void
   (e: 'add-to-collection', collectionId: number, gameId: number): void
   (e: 'toggle-hidden', gameId: number, hidden: boolean): void
+  (e: 'set-rating', gameId: number, rating: number | null): void
 }>()
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
 const manual = computed(() => hasManualEntry(props.entry))
 const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_minutes))
+const stars = computed(() => ratingStars(props.entry.rating))
 const selectedCollectionId = ref<number | null>(null)
 
 function onAddToCollection(): void {
@@ -51,6 +55,20 @@ function onAddToCollection(): void {
         <NuxtLink :to="`/games/${entry.id}`" class="hover:text-teal-300">{{ entry.title }}</NuxtLink>
       </h3>
       <p class="mb-1.5 text-xs text-teal-300/90">{{ playtimeLabel }}</p>
+      <div class="mb-1.5 flex gap-0.5" role="group" aria-label="Rating">
+        <button
+          v-for="star in stars"
+          :key="star.value"
+          type="button"
+          class="text-sm leading-none transition hover:text-amber-300 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-teal-400"
+          :class="star.filled ? 'text-amber-400' : 'text-slate-600'"
+          :aria-label="`Rate ${star.value} star${star.value === 1 ? '' : 's'}`"
+          :aria-pressed="star.filled"
+          @click="emit('set-rating', entry.id, nextRating(entry.rating, star.value))"
+        >
+          {{ star.filled ? '★' : '☆' }}
+        </button>
+      </div>
       <ul class="mb-1.5 flex flex-wrap gap-1.5 p-0">
         <li
           v-if="entry.library_status === 'wishlist'"

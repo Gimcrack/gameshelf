@@ -4,6 +4,8 @@ import {
   formatPlaytime,
   hasDisconnectedPlatform,
   hasManualEntry,
+  nextRating,
+  ratingStars,
   type LibraryEntry
 } from '../../app/utils/library'
 
@@ -155,5 +157,27 @@ describe('hasManualEntry', () => {
       ]
     })
     expect(hasManualEntry(manual)).toBe(true)
+  })
+})
+
+describe('nextRating', () => {
+  it('sets the clicked rating when different from current', () => {
+    expect(nextRating(null, 3)).toBe(3)
+    expect(nextRating(2, 4)).toBe(4)
+  })
+
+  it('clears to null when the current rating is clicked again', () => {
+    expect(nextRating(3, 3)).toBeNull()
+  })
+})
+
+describe('ratingStars', () => {
+  it('marks all five hollow when unrated', () => {
+    expect(ratingStars(null).map((s) => s.filled)).toEqual([false, false, false, false, false])
+  })
+
+  it('fills the first n stars for rating n', () => {
+    expect(ratingStars(3).map((s) => s.filled)).toEqual([true, true, true, false, false])
+    expect(ratingStars(3).map((s) => s.value)).toEqual([1, 2, 3, 4, 5])
   })
 })

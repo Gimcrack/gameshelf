@@ -73,6 +73,11 @@ async function onToggleHidden(gameId: number, hidden: boolean): Promise<void> {
   await fetchFacets()
 }
 
+async function onSetRating(gameId: number, rating: number | null): Promise<void> {
+  await updateMeta(gameId, { rating })
+  await fetchLibrary(filters.value)
+}
+
 async function onLogout(): Promise<void> {
   isLoggingOut.value = true
   try {
@@ -178,6 +183,7 @@ async function onLogout(): Promise<void> {
               @remove-manual="onRemoveManual"
               @add-to-collection="onAddToCollection"
               @toggle-hidden="onToggleHidden"
+              @set-rating="onSetRating"
             />
           </div>
         </section>

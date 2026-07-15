@@ -130,6 +130,18 @@ export function deckStatusLabel(status: DeckStatus): string {
 }
 
 /**
+ * T39: click a star to set that rating; click the current rating to clear it (null).
+ */
+export function nextRating(current: number | null, clicked: number): number | null {
+  return clicked === current ? null : clicked
+}
+
+/** T39: 5 star slots (1..5), filled up to the current rating (null → all hollow). */
+export function ratingStars(rating: number | null): { value: number; filled: boolean }[] {
+  return [1, 2, 3, 4, 5].map((value) => ({ value, filled: value <= (rating ?? 0) }))
+}
+
+/**
  * V12: null playtime is unknown — rendered distinctly from 0 (unplayed).
  */
 export function formatPlaytime(minutes: number | null): string {
