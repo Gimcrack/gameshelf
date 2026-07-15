@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { excludeDedicatedGameModes, filterFacetOptions } from '../../app/utils/facets'
+import {
+  filterFacetOptions,
+  splitGameModeSelection,
+  unifiedGameModeOptions,
+} from '../../app/utils/facets'
 
 describe('filterFacetOptions', () => {
   const options = ['Adventure', 'Role-playing (RPG)', 'Shooter', 'Turn-based strategy (TBS)']
@@ -29,28 +33,63 @@ describe('filterFacetOptions', () => {
   })
 })
 
-describe('excludeDedicatedGameModes', () => {
-  it('drops game modes covered by the dedicated boolean filters', () => {
-    expect(
-      excludeDedicatedGameModes([
-        'Battle Royale',
-        'Co-operative',
-        'Massively Multiplayer Online (MMO)',
-        'Multiplayer',
-        'Single player',
-        'Split screen',
-      ]),
-    ).toEqual(['Battle Royale', 'Massively Multiplayer Online (MMO)', 'Single player'])
+describe('unifiedGameModeOptions', () => {
+  it('merges facet values with the synthetic local options, sorted', () => {
+    expect(unifiedGameModeOptions(['Multiplayer', 'Battle Royale', 'Single player'])).toEqual([
+      'Battle Royale',
+      'Local co-op',
+      'Local multiplayer',
+      'Multiplayer',
+      'Single player',
+    ])
   })
 
-  it('returns all options when none are duplicated', () => {
-    const options = ['Battle Royale', 'Single player']
-    expect(excludeDedicatedGameModes(options)).toEqual(options)
+  it('includes the synthetic options even for an empty facet list', () => {
+    expect(unifiedGameModeOptions([])).toEqual(['Local co-op', 'Local multiplayer'])
+  })
+
+  it('does not duplicate a synthetic value already present in the facets', () => {
+    expect(unifiedGameModeOptions(['Local co-op'])).toEqual(['Local co-op', 'Local multiplayer'])
+  })
+
+  it('does not mutate the input array', () => {
+    const input = ['Single player', 'Battle Royale']
+    unifiedGameModeOptions(input)
+    expect(input).toEqual(['Single player', 'Battle Royale'])
+  })
+})
+
+describe('splitGameModeSelection', () => {
+  it('routes bool-backed labels to V32 flags and the rest to taxonomy values', () => {
+    expect(
+      splitGameModeSelection([
+        'Multiplayer',
+        'Co-operative',
+        'Local multiplayer',
+        'Local co-op',
+        'Split screen',
+        'Battle Royale',
+      ]),
+    ).toEqual({
+      flags: { multiplayer: true, coop: true, localMultiplayer: true, localCoop: true },
+      gameModes: ['Split screen', 'Battle Royale'],
+    })
+  })
+
+  it('returns empty flags and values for an empty selection', () => {
+    expect(splitGameModeSelection([])).toEqual({ flags: {}, gameModes: [] })
+  })
+
+  it('omits flags for unselected bool-backed labels', () => {
+    expect(splitGameModeSelection(['Co-operative', 'Single player'])).toEqual({
+      flags: { coop: true },
+      gameModes: ['Single player'],
+    })
   })
 
   it('does not mutate the input array', () => {
     const input = ['Multiplayer', 'Single player']
-    excludeDedicatedGameModes(input)
+    splitGameModeSelection(input)
     expect(input).toEqual(['Multiplayer', 'Single player'])
   })
 })

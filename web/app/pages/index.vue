@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DeckStatus, LibraryFilters, LibrarySort } from '../utils/library'
+import { splitGameModeSelection } from '../utils/facets'
 
 const { user, logout, fetchUser } = useAuth()
 const { entries, facets, pending, error, fetchLibrary, fetchFacets, removeManual, updateMeta } = useLibrary()
@@ -21,29 +22,27 @@ const unplayed = ref(false)
 const showHidden = ref(false)
 const deckStatuses = ref<DeckStatus[]>([])
 const esrb = ref('')
-const multiplayer = ref(false)
-const coop = ref(false)
-const localMultiplayer = ref(false)
-const localCoop = ref(false)
 
-const filters = computed<LibraryFilters>(() => ({
-  sort: sort.value,
-  order: order.value,
-  ...(q.value.trim() ? { q: q.value.trim() } : {}),
-  ...(platforms.value.length ? { platform: platforms.value.join(',') } : {}),
-  ...(genres.value.length ? { genre: genres.value.join(',') } : {}),
-  ...(themes.value.length ? { theme: themes.value.join(',') } : {}),
-  ...(keywords.value.length ? { keyword: keywords.value.join(',') } : {}),
-  ...(gameModes.value.length ? { gameMode: gameModes.value.join(',') } : {}),
-  ...(unplayed.value ? { unplayed: true } : {}),
-  ...(showHidden.value ? { includeHidden: true } : {}),
-  ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
-  ...(esrb.value ? { esrb: esrb.value } : {}),
-  ...(multiplayer.value ? { multiplayer: true } : {}),
-  ...(coop.value ? { coop: true } : {}),
-  ...(localMultiplayer.value ? { localMultiplayer: true } : {}),
-  ...(localCoop.value ? { localCoop: true } : {})
-}))
+const filters = computed<LibraryFilters>(() => {
+  // V40: bool-backed game-mode labels route through the V32 flag params.
+  const { flags, gameModes: gameModeValues } = splitGameModeSelection(gameModes.value)
+
+  return {
+    sort: sort.value,
+    order: order.value,
+    ...(q.value.trim() ? { q: q.value.trim() } : {}),
+    ...(platforms.value.length ? { platform: platforms.value.join(',') } : {}),
+    ...(genres.value.length ? { genre: genres.value.join(',') } : {}),
+    ...(themes.value.length ? { theme: themes.value.join(',') } : {}),
+    ...(keywords.value.length ? { keyword: keywords.value.join(',') } : {}),
+    ...(gameModeValues.length ? { gameMode: gameModeValues.join(',') } : {}),
+    ...flags,
+    ...(unplayed.value ? { unplayed: true } : {}),
+    ...(showHidden.value ? { includeHidden: true } : {}),
+    ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
+    ...(esrb.value ? { esrb: esrb.value } : {})
+  }
+})
 
 onMounted(async () => {
   if (!user.value) {
@@ -119,10 +118,6 @@ async function onLogout(): Promise<void> {
         v-model:esrb="esrb"
         v-model:unplayed="unplayed"
         v-model:show-hidden="showHidden"
-        v-model:multiplayer="multiplayer"
-        v-model:coop="coop"
-        v-model:local-multiplayer="localMultiplayer"
-        v-model:local-coop="localCoop"
       />
 
       <div class="min-w-0 flex-1">

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DeckStatus, LibraryFacets } from '~/utils/library'
-import { excludeDedicatedGameModes } from '~/utils/facets'
+import { unifiedGameModeOptions } from '~/utils/facets'
 
 const props = defineProps<{ facets: LibraryFacets }>()
 
-const gameModeOptions = computed(() => excludeDedicatedGameModes(props.facets.game_modes))
+const gameModeOptions = computed(() => unifiedGameModeOptions(props.facets.game_modes))
 
 const platforms = defineModel<string[]>('platforms', { default: () => [] })
 const genres = defineModel<string[]>('genres', { default: () => [] })
@@ -16,10 +16,6 @@ const deckStatuses = defineModel<DeckStatus[]>('deckStatuses', { default: () => 
 const esrb = defineModel<string>('esrb', { default: '' })
 const unplayed = defineModel<boolean>('unplayed', { default: false })
 const showHidden = defineModel<boolean>('showHidden', { default: false })
-const multiplayer = defineModel<boolean>('multiplayer', { default: false })
-const coop = defineModel<boolean>('coop', { default: false })
-const localMultiplayer = defineModel<boolean>('localMultiplayer', { default: false })
-const localCoop = defineModel<boolean>('localCoop', { default: false })
 
 const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'verified']
 </script>
@@ -64,22 +60,6 @@ const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'veri
       <label class="flex items-center gap-2 pb-0.5">
         <input v-model="showHidden" type="checkbox" class="accent-teal-500" />
         Show hidden
-      </label>
-      <label class="flex items-center gap-2 pb-0.5">
-        <input v-model="multiplayer" type="checkbox" class="accent-teal-500" />
-        Multiplayer
-      </label>
-      <label class="flex items-center gap-2 pb-0.5">
-        <input v-model="coop" type="checkbox" class="accent-teal-500" />
-        Co-op
-      </label>
-      <label class="flex items-center gap-2 pb-0.5">
-        <input v-model="localMultiplayer" type="checkbox" class="accent-teal-500" />
-        Local multiplayer
-      </label>
-      <label class="flex items-center gap-2 pb-0.5">
-        <input v-model="localCoop" type="checkbox" class="accent-teal-500" />
-        Local co-op
       </label>
     </div>
   </aside>
