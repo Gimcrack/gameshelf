@@ -35,8 +35,12 @@ class IgdbClient
     // already fetches genres — no extra IGDB call, no throttle/cache change.
     // T27/V32,V33: age_ratings (ESRB) + multiplayer_modes ride the same
     // request for the same reason.
+    // B7/V37: `organization`+nested `rating_category.rating` — IGDB's real
+    // shape (verified live). The old flat `category`/`rating` field names
+    // don't exist; IGDB drops unknown fields silently (no error), which is
+    // exactly how this went unnoticed.
     private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,'
-        .'first_release_date,age_ratings.category,age_ratings.rating,'
+        .'first_release_date,age_ratings.organization,age_ratings.rating_category.rating,'
         .'multiplayer_modes.campaigncoop,multiplayer_modes.dropin,multiplayer_modes.lancoop,'
         .'multiplayer_modes.offlinecoop,multiplayer_modes.offlinemax,multiplayer_modes.onlinecoop,'
         .'multiplayer_modes.onlinemax,multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline';

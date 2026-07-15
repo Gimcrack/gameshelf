@@ -10,19 +10,10 @@ use Illuminate\Support\Facades\Date;
  */
 class IgdbGameAttributes
 {
-    // T27/V33: IGDB AgeRatingCategoryEnum — ESRB only, PEGI/CERO/etc excluded.
-    private const ESRB_CATEGORY = 1;
-
-    // T27/V33: IGDB AgeRatingRatingEnum ids for ESRB's own rating scale.
-    private const ESRB_RATING_MAP = [
-        6 => 'RP',
-        7 => 'EC',
-        8 => 'E',
-        9 => 'E10',
-        10 => 'T',
-        11 => 'M',
-        12 => 'AO',
-    ];
+    // B7/V37: IGDB age_rating_organizations.id — ESRB only, PEGI/CERO/etc
+    // excluded. `rating_category.rating` (nested) gives the label string
+    // directly ("M", "E10+"...) — no local id→label table needed.
+    private const ESRB_ORGANIZATION = 1;
 
     /**
      * @param  array<string, mixed>  $igdb
@@ -64,8 +55,8 @@ class IgdbGameAttributes
     private static function esrbRating(array $ageRatings): ?string
     {
         foreach ($ageRatings as $rating) {
-            if (($rating['category'] ?? null) === self::ESRB_CATEGORY) {
-                return self::ESRB_RATING_MAP[$rating['rating'] ?? null] ?? null;
+            if (($rating['organization'] ?? null) === self::ESRB_ORGANIZATION) {
+                return $rating['rating_category']['rating'] ?? null;
             }
         }
 

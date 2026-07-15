@@ -63,7 +63,9 @@ class GameMatcherTest extends TestCase
             'keywords' => [['name' => 'physics']],
             'game_modes' => [['name' => 'Single player'], ['name' => 'Co-operative']],
             'first_release_date' => 1303171200,
-            'age_ratings' => [['category' => 1, 'rating' => 11]],
+            // B7/V37: IGDB's real nested shape — organization 1 = ESRB,
+            // rating_category.rating is the label string directly.
+            'age_ratings' => [['organization' => 1, 'rating_category' => ['id' => 6, 'rating' => 'M']]],
             'multiplayer_modes' => [[
                 'campaigncoop' => true,
                 'dropin' => false,
@@ -94,7 +96,7 @@ class GameMatcherTest extends TestCase
         $this->assertSame(['physics'], $game->keywords);
         $this->assertSame(['Single player', 'Co-operative'], $game->game_modes);
         $this->assertSame('2011-04-19', $game->release_date->toDateString());
-        // V33: category 1 = ESRB, rating id 11 = M.
+        // B7/V37: organization 1 = ESRB, rating_category.rating = 'M'.
         $this->assertSame('M', $game->esrb_rating);
         // V32: campaigncoop/onlinecoop/offlinecoop all present → true.
         $this->assertTrue($game->multiplayer);
@@ -102,6 +104,26 @@ class GameMatcherTest extends TestCase
         // offlinecoop present → local_coop true.
         $this->assertTrue($game->local_coop);
         $this->assertTrue($game->local_multiplayer);
+    }
+
+    /**
+     * B7/V37: pins the real IGDB field names in the outgoing query — this
+     * exact bug (wrong field name, silently dropped by IGDB, no error)
+     * would otherwise recur invisibly.
+     */
+    public function test_search_query_requests_correct_age_ratings_fields(): void
+    {
+        $this->fakeIgdb([$this->portalIgdbRecord()]);
+        [, , $connection] = $this->provisionalOwnedGame('Portal 2', '620');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $requests = Http::recorded(fn ($request) => str_contains($request->url(), 'api.igdb.com/v4/games'));
+        $body = $requests->first()[0]->body();
+        $this->assertStringContainsString('age_ratings.organization', $body);
+        $this->assertStringContainsString('age_ratings.rating_category.rating', $body);
+        $this->assertStringNotContainsString('age_ratings.category', $body);
+        $this->assertStringNotContainsString('age_ratings.rating,', $body);
     }
 
     /**
