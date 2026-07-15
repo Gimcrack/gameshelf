@@ -329,6 +329,104 @@ class WishlistSyncTest extends TestCase
         $this->assertDatabaseCount('wishlist_items', 0);
     }
 
+    /**
+     * V45/B11: external mapping must query `external_game_source`, not the
+     * dropped `category` field — the wrong field returns [] silently and every
+     * import lands provisional.
+     */
+    public function test_external_mapping_query_uses_external_game_source(): void
+    {
+        $this->steamConnection();
+        Http::fake([
+            ...$this->baseFakes(),
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 1145360, 'priority' => 0]]],
+            ]),
+            'api.igdb.com/v4/external_games' => Http::response([
+                ['id' => 5, 'game' => 119388, 'uid' => '1145360', 'external_game_source' => 1],
+            ]),
+            'api.igdb.com/v4/games' => Http::response([
+                ['id' => 119388, 'name' => 'Hades II'],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        Http::assertSent(function ($r) {
+            if (! str_contains($r->url(), 'external_games')) {
+                return false;
+            }
+            $body = $r->body();
+
+            return str_contains($body, 'external_game_source =')
+                && ! preg_match('/\bcategory\s*=/', $body);
+        });
+        $this->assertDatabaseHas('games', ['igdb_id' => 119388, 'title' => 'Hades II']);
+    }
+
+    /**
+     * V46/B12: one item's resolution failure (Steam store 500 on the appName
+     * fallback) skips that item without aborting the batch — later items still
+     * import.
+     */
+    public function test_failed_item_skipped_not_batch_aborted(): void
+    {
+        $this->steamConnection();
+        Http::fake([
+            ...$this->baseFakes(),
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [
+                    ['appid' => 111, 'priority' => 0],
+                    ['appid' => 222, 'priority' => 1],
+                ]],
+            ]),
+            // 111 → no IGDB mapping; store appdetails 500s (rate-limit noise).
+            // 222 → clean IGDB match.
+            'api.igdb.com/v4/external_games' => Http::response([
+                ['id' => 5, 'game' => 119388, 'uid' => '222', 'external_game_source' => 1],
+            ]),
+            'store.steampowered.com/api/appdetails*' => Http::response('nope', 500),
+            'api.igdb.com/v4/games' => Http::response([
+                ['id' => 119388, 'name' => 'Hades II'],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        // Batch survived the 500 on 111; 222 imported.
+        $this->assertDatabaseHas('games', ['igdb_id' => 119388, 'title' => 'Hades II']);
+        $this->assertDatabaseCount('wishlist_items', 1);
+    }
+
+    /**
+     * V46: a genuine no-mapping miss is not cached forever — the next sync
+     * re-queries IGDB so a later backfill can resolve it.
+     */
+    public function test_unmapped_item_rechecked_next_sync(): void
+    {
+        $this->steamConnection();
+        Http::fake([
+            ...$this->baseFakes(),
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 111, 'priority' => 0]]],
+            ]),
+            // No mapping either sync; no store fallback title.
+            'api.igdb.com/v4/external_games' => Http::response([]),
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '111' => ['success' => false],
+            ]),
+        ]);
+
+        $this->runSync();
+        $this->travel(7)->hours(); // past NEGATIVE_CACHE_TTL (6h)
+        $this->runSync();
+
+        // Miss re-queried once the short TTL lapsed — a forever-cached
+        // negative would have pinned it to a single query.
+        $external = Http::recorded(fn ($r) => str_contains($r->url(), 'external_games'));
+        $this->assertGreaterThanOrEqual(2, count($external));
+    }
+
     public function test_sync_endpoint_dispatches_and_throttles(): void
     {
         Queue::fake();

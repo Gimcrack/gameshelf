@@ -52,7 +52,13 @@ class IgdbClient
         'popularity' => 'total_rating_count desc',
     ];
 
-    /** external_games.category values (I.igdb external mapping). */
+    /**
+     * external_games.external_game_source ids (I.igdb external mapping).
+     * IGDB overhauled external_games — the old `category` field was renamed
+     * to `external_game_source`; the numeric ids are unchanged (B11/V45,
+     * live-verified). Querying the dropped `category` field returns [] with
+     * no error, so every mapping silently missed.
+     */
     public const EXTERNAL_STEAM = 1;
 
     public const EXTERNAL_GOG = 5;
@@ -336,7 +342,7 @@ class IgdbClient
         $this->throttle();
 
         $query = sprintf(
-            'fields game; where uid = "%s" & category = %d; limit 1;',
+            'fields game; where uid = "%s" & external_game_source = %d; limit 1;',
             str_replace('"', '\"', $uid),
             $category,
         );
@@ -364,7 +370,7 @@ class IgdbClient
         $this->throttle();
 
         $query = sprintf(
-            'fields uid; where game = %d & category = %d; limit 1;',
+            'fields uid; where game = %d & external_game_source = %d; limit 1;',
             $igdbId,
             $category,
         );

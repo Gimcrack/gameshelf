@@ -14,6 +14,8 @@ use App\Services\Library\GameFromIgdb;
 use App\Services\Steam\SteamClient;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * V22: pull steam+gog wishlists, push local changes to GOG only.
@@ -21,6 +23,14 @@ use Illuminate\Support\Facades\Date;
  */
 class WishlistSyncService
 {
+    /**
+     * V46: genuine "no mapping" is cached only briefly so a later IGDB
+     * backfill (B11-class: mapping added upstream) self-heals on the next
+     * sync instead of being pinned forever. Positive hits stay cached
+     * forever — those are stable.
+     */
+    private const NEGATIVE_CACHE_TTL = 6 * 3600;
+
     public function __construct(
         private readonly SteamClient $steam,
         private readonly GogClient $gog,
@@ -189,12 +199,26 @@ class WishlistSyncService
             return null;
         }
 
-        $uid = Cache::rememberForever(
-            'igdb-external-uid:'.IgdbClient::EXTERNAL_GOG.":{$game->igdb_id}",
-            fn () => $this->igdb->externalUid($game->igdb_id, IgdbClient::EXTERNAL_GOG) ?? '',
-        );
+        // `:v2:` abandons pre-B11 poisoned keys (empty-string misses cached
+        // forever under the wrong `category` query — T45/V45).
+        $key = 'igdb-external-uid:v2:'.IgdbClient::EXTERNAL_GOG.":{$game->igdb_id}";
+        $cached = Cache::get($key);
 
-        return $uid === '' ? null : $uid;
+        if ($cached !== null) {
+            return $cached === '' ? null : $cached;
+        }
+
+        $uid = $this->igdb->externalUid($game->igdb_id, IgdbClient::EXTERNAL_GOG);
+
+        if ($uid !== null) {
+            Cache::forever($key, $uid);
+
+            return $uid;
+        }
+
+        Cache::put($key, '', self::NEGATIVE_CACHE_TTL);
+
+        return null;
     }
 
     /**
@@ -215,25 +239,63 @@ class WishlistSyncService
      */
     private function gameFromExternal(int $category, string $uid, callable $fallbackTitle): ?Game
     {
-        // V4 spirit: external-id lookups cached forever — mappings are stable.
-        $igdbId = Cache::rememberForever(
-            "igdb-external:{$category}:{$uid}",
-            fn () => $this->igdb->gameIdFromExternal($category, $uid) ?? 0,
-        );
+        try {
+            $igdbId = $this->resolveExternalIgdbId($category, $uid);
 
-        if ($igdbId !== 0) {
-            return $this->games->findOrCreate($igdbId);
-        }
+            if ($igdbId !== null) {
+                return $this->games->findOrCreate($igdbId);
+            }
 
-        // V11 spirit: no IGDB mapping still lands a provisional row when a
-        // store title is available.
-        $title = $fallbackTitle();
+            // V11 spirit: no IGDB mapping still lands a provisional row when a
+            // store title is available.
+            $title = $fallbackTitle();
 
-        if ($title === null) {
+            if ($title === null) {
+                return null;
+            }
+
+            return Game::firstOrCreate(['title' => $title, 'igdb_id' => null]);
+        } catch (Throwable $e) {
+            // V46: one item's IGDB/Twitch/Steam-store failure skips that item,
+            // never aborts the batch (B12). The failure is not written to
+            // cache (V26 MISS-on-exception) — the item retries next sync.
+            Log::warning('Wishlist external resolution failed, skipping item', [
+                'category' => $category,
+                'uid' => $uid,
+                'error' => $e->getMessage(),
+            ]);
+
             return null;
         }
+    }
 
-        return Game::firstOrCreate(['title' => $title, 'igdb_id' => null]);
+    /**
+     * IGDB game id for a store id (V4 cache). Positive mappings are stable →
+     * cached forever; genuine misses use a short TTL (V46) so a later IGDB
+     * backfill self-heals rather than sticking forever. `:v2:` abandons the
+     * pre-B11 poisoned keys (0-cached forever under the wrong `category`
+     * query — T45/V45).
+     */
+    private function resolveExternalIgdbId(int $category, string $uid): ?int
+    {
+        $key = "igdb-external:v2:{$category}:{$uid}";
+        $cached = Cache::get($key);
+
+        if ($cached !== null) {
+            return $cached === 0 ? null : (int) $cached;
+        }
+
+        $igdbId = $this->igdb->gameIdFromExternal($category, $uid);
+
+        if ($igdbId !== null) {
+            Cache::forever($key, $igdbId);
+
+            return $igdbId;
+        }
+
+        Cache::put($key, 0, self::NEGATIVE_CACHE_TTL);
+
+        return null;
     }
 
     private function recordPresence(User $user, Game $game, string $platform, ?string $productId = null): void
