@@ -17,6 +17,8 @@ const deckStatuses = defineModel<DeckStatus[]>('deckStatuses', { default: () => 
 const esrb = defineModel<string[]>('esrb', { default: () => [] })
 // T38/V42: union per-entry status.
 const libraryStatuses = defineModel<LibraryStatus[]>('libraryStatuses', { default: () => [] })
+// T40: personal rating; '1'..'5' + 'none' (unrated).
+const ratings = defineModel<string[]>('ratings', { default: () => [] })
 const unplayed = defineModel<boolean>('unplayed', { default: false })
 const showHidden = defineModel<boolean>('showHidden', { default: false })
 
@@ -33,6 +35,18 @@ const LIBRARY_STATUS_LABELS: Record<string, string> = {
   free: 'Free-to-play',
   wishlist: 'Wishlist',
   none: 'Not owned'
+}
+
+// T40: static list — personal rating is not a facets source (I.api).
+const RATINGS: string[] = ['1', '2', '3', '4', '5', 'none']
+
+const RATING_LABELS: Record<string, string> = {
+  1: '★',
+  2: '★★',
+  3: '★★★',
+  4: '★★★★',
+  5: '★★★★★',
+  none: 'Unrated'
 }
 </script>
 
@@ -51,6 +65,7 @@ const LIBRARY_STATUS_LABELS: Record<string, string> = {
       :options="LIBRARY_STATUSES"
       :labels="LIBRARY_STATUS_LABELS"
     />
+    <FacetFilter v-model="ratings" label="Rating" :options="RATINGS" :labels="RATING_LABELS" />
 
     <div class="flex flex-col gap-1">
       <label class="flex items-center gap-2 pb-0.5">

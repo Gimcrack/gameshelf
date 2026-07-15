@@ -345,6 +345,12 @@ class LibraryQuery
             ->when(isset($filters['library_status']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array($e['library_status'], $this->valueList($filters['library_status']), true),
             ))
+            // T40: personal rating multi-select; `none` matches unrated
+            // (rating null). String-cast — entry rating is an int, query
+            // values arrive as strings; mirrors the esrb `none` sentinel.
+            ->when(isset($filters['rating']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array((string) ($e['rating'] ?? 'none'), $this->valueList($filters['rating']), true),
+            ))
             // T27/V32: equality against the derived flag; null (best-effort
             // miss) matches neither an explicit true nor false query.
             ->when(isset($filters['multiplayer']), fn (Collection $c) => $c->filter(

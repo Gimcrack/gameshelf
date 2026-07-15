@@ -74,6 +74,8 @@ export interface LibraryFilters {
   esrb?: string[]
   // T38: multi-select on the union's per-entry status.
   libraryStatus?: LibraryStatus[]
+  // T40: multi-select; '1'..'5' + 'none' (unrated, rating null).
+  rating?: string[]
   multiplayer?: boolean
   coop?: boolean
   localMultiplayer?: boolean
@@ -109,6 +111,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   for (const status of filters.deckStatus ?? []) params.append('deck_status[]', status)
   for (const rating of filters.esrb ?? []) params.append('esrb[]', rating)
   for (const status of filters.libraryStatus ?? []) params.append('library_status[]', status)
+  for (const rating of filters.rating ?? []) params.append('rating[]', rating)
   if (filters.multiplayer) params.set('multiplayer', '1')
   if (filters.coop) params.set('coop', '1')
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')

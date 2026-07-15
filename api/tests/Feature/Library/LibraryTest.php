@@ -57,6 +57,16 @@ class LibraryTest extends TestCase
         return Game::create(['title' => $title, ...$attrs]);
     }
 
+    /** T40: attach a personal rating (user_game_meta) to an owned game. */
+    private function rate(OwnedGame $owned, int $rating): void
+    {
+        \App\Models\UserGameMeta::create([
+            'user_id' => $owned->user_id,
+            'game_id' => $owned->game_id,
+            'rating' => $rating,
+        ]);
+    }
+
     /**
      * V1: same game owned on two platforms is one library entry with both
      * platforms listed — dedupe happens at query time.
@@ -422,6 +432,38 @@ class LibraryTest extends TestCase
         sort($titles);
 
         $this->assertSame(['Everyone', 'Unrated'], $titles);
+    }
+
+    // T40: personal rating multi-select, mirrors esrb[].
+    public function test_filters_by_rating(): void
+    {
+        $steam = $this->connection('steam');
+        $this->rate($this->own($steam, $this->game('Three Star'), 10), 3);
+        $this->rate($this->own($steam, $this->game('Five Star'), 10), 5);
+
+        $titles = array_column($this->getJson('/api/library?rating[]=3')->assertOk()->json(), 'title');
+
+        $this->assertSame(['Three Star'], $titles);
+    }
+
+    /**
+     * T40: `none` sentinel matches unrated (rating null) at the query layer;
+     * combines with numeric selections.
+     */
+    public function test_filters_by_rating_including_none(): void
+    {
+        $steam = $this->connection('steam');
+        $this->rate($this->own($steam, $this->game('Five Star'), 10), 5);
+        $this->rate($this->own($steam, $this->game('Three Star'), 10), 3);
+        $this->own($steam, $this->game('Unrated'), 10);
+
+        $titles = array_column(
+            $this->getJson('/api/library?rating[]=5&rating[]=none')->assertOk()->json(),
+            'title',
+        );
+        sort($titles);
+
+        $this->assertSame(['Five Star', 'Unrated'], $titles);
     }
 
     /**

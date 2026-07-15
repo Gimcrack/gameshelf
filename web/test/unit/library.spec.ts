@@ -104,6 +104,13 @@ describe('buildLibraryQuery', () => {
     expect(params.getAll('library_status[]')).toEqual(['wishlist', 'none'])
     expect(buildLibraryQuery({ libraryStatus: [] })).toBe('')
   })
+
+  // T40: rating multi-select — repeated rating[] params.
+  it('maps rating to repeated rating[] params', () => {
+    const params = new URLSearchParams(buildLibraryQuery({ rating: ['5', 'none'] }))
+    expect(params.getAll('rating[]')).toEqual(['5', 'none'])
+    expect(buildLibraryQuery({ rating: [] })).toBe('')
+  })
 })
 
 describe('formatPlaytime', () => {

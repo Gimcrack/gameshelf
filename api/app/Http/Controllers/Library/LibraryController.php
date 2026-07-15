@@ -47,6 +47,9 @@ class LibraryController extends Controller
             // T38/V42: multi-select on the union's per-entry status.
             'library_status' => ['sometimes', 'array'],
             'library_status.*' => ['in:owned,free,wishlist,none'],
+            // T40: personal rating multi-select; `none` matches unrated (null).
+            'rating' => ['sometimes', 'array'],
+            'rating.*' => ['in:1,2,3,4,5,none'],
             'multiplayer' => ['sometimes', 'boolean'],
             'coop' => ['sometimes', 'boolean'],
             'local_multiplayer' => ['sometimes', 'boolean'],

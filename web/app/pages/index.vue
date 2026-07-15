@@ -23,6 +23,7 @@ const showHidden = ref(false)
 const deckStatuses = ref<DeckStatus[]>([])
 const esrb = ref<string[]>([])
 const libraryStatuses = ref<LibraryStatus[]>([])
+const ratings = ref<string[]>([])
 
 const filters = computed<LibraryFilters>(() => {
   // V40: bool-backed game-mode labels route through the V32 flag params.
@@ -42,7 +43,8 @@ const filters = computed<LibraryFilters>(() => {
     ...(showHidden.value ? { includeHidden: true } : {}),
     ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
     ...(esrb.value.length ? { esrb: esrb.value } : {}),
-    ...(libraryStatuses.value.length ? { libraryStatus: libraryStatuses.value } : {})
+    ...(libraryStatuses.value.length ? { libraryStatus: libraryStatuses.value } : {}),
+    ...(ratings.value.length ? { rating: ratings.value } : {})
   }
 })
 
@@ -124,6 +126,7 @@ async function onLogout(): Promise<void> {
         v-model:deck-statuses="deckStatuses"
         v-model:esrb="esrb"
         v-model:library-statuses="libraryStatuses"
+        v-model:ratings="ratings"
         v-model:unplayed="unplayed"
         v-model:show-hidden="showHidden"
       />
