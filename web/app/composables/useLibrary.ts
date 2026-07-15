@@ -55,5 +55,24 @@ export function useLibrary() {
     await apiFetch(`/api/library/${gameId}/meta`, { method: 'PUT', body: payload })
   }
 
-  return { entries, facets, pending, error, fetchLibrary, fetchFacets, removeManual, fetchGame, updateMeta }
+  /** I.api T29/V34: POST /api/library/:game_id/rematch — returns the updated entry. */
+  async function rematch(gameId: number, igdbId: number): Promise<LibraryEntry> {
+    return apiFetch<LibraryEntry>(`/api/library/${gameId}/rematch`, {
+      method: 'POST',
+      body: { igdb_id: igdbId }
+    })
+  }
+
+  return {
+    entries,
+    facets,
+    pending,
+    error,
+    fetchLibrary,
+    fetchFacets,
+    removeManual,
+    fetchGame,
+    updateMeta,
+    rematch
+  }
 }

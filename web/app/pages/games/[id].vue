@@ -50,6 +50,15 @@ async function load(): Promise<void> {
 onMounted(load)
 watch(gameId, load)
 
+/** Rematch can repoint to a different (or newly created) canonical game id. */
+async function onMatched(newGameId: number): Promise<void> {
+  if (newGameId === gameId.value) {
+    await load()
+  } else {
+    await navigateTo(`/games/${newGameId}`)
+  }
+}
+
 async function onSave(): Promise<void> {
   saving.value = true
   saveError.value = null
@@ -130,6 +139,10 @@ async function onSave(): Promise<void> {
             <span v-if="p.deck_status"> · {{ deckStatusLabel(p.deck_status) }}</span>
           </li>
         </ul>
+
+        <div class="mb-4">
+          <FixMatchPanel :game-id="gameId" :initial-query="entry.title" @matched="onMatched" />
+        </div>
 
         <div v-if="entry.esrb_rating || entry.multiplayer || entry.coop" class="mb-4 flex flex-wrap gap-1.5">
           <span

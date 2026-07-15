@@ -9,6 +9,7 @@ use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\LibraryController;
 use App\Http\Controllers\Library\ManualEntryController;
+use App\Http\Controllers\Library\RematchController;
 use App\Http\Controllers\Stats\StatsController;
 use App\Http\Controllers\Wishlist\WishlistController;
 use Illuminate\Http\Request;
@@ -45,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/library', [ManualEntryController::class, 'store']);
     Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);
+    Route::post('/library/{game}/rematch', [RematchController::class, 'store']);
 
     Route::get('/collections', [CollectionController::class, 'index']);
     Route::post('/collections', [CollectionController::class, 'store']);
