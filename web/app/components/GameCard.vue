@@ -53,6 +53,12 @@ function onAddToCollection(): void {
       <p class="mb-1.5 text-xs text-teal-300/90">{{ playtimeLabel }}</p>
       <ul class="mb-1.5 flex flex-wrap gap-1.5 p-0">
         <li
+          v-if="entry.library_status === 'wishlist'"
+          class="rounded bg-violet-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-violet-300"
+        >
+          Wishlist
+        </li>
+        <li
           v-for="p in entry.platforms"
           :key="p.platform"
           class="rounded bg-teal-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"

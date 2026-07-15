@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DeckStatus, LibraryFilters, LibrarySort } from '../utils/library'
+import type { DeckStatus, LibraryFilters, LibrarySort, LibraryStatus } from '../utils/library'
 import { splitGameModeSelection } from '../utils/facets'
 
 const { user, logout, fetchUser } = useAuth()
@@ -22,6 +22,7 @@ const unplayed = ref(false)
 const showHidden = ref(false)
 const deckStatuses = ref<DeckStatus[]>([])
 const esrb = ref<string[]>([])
+const libraryStatuses = ref<LibraryStatus[]>([])
 
 const filters = computed<LibraryFilters>(() => {
   // V40: bool-backed game-mode labels route through the V32 flag params.
@@ -40,7 +41,8 @@ const filters = computed<LibraryFilters>(() => {
     ...(unplayed.value ? { unplayed: true } : {}),
     ...(showHidden.value ? { includeHidden: true } : {}),
     ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
-    ...(esrb.value.length ? { esrb: esrb.value } : {})
+    ...(esrb.value.length ? { esrb: esrb.value } : {}),
+    ...(libraryStatuses.value.length ? { libraryStatus: libraryStatuses.value } : {})
   }
 })
 
@@ -116,6 +118,7 @@ async function onLogout(): Promise<void> {
         v-model:game-modes="gameModes"
         v-model:deck-statuses="deckStatuses"
         v-model:esrb="esrb"
+        v-model:library-statuses="libraryStatuses"
         v-model:unplayed="unplayed"
         v-model:show-hidden="showHidden"
       />

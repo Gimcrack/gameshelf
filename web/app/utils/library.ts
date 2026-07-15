@@ -11,6 +11,9 @@ export interface LibraryPlatform {
 
 export type GameStatus = 'unplayed' | 'playing' | 'finished' | 'abandoned'
 
+// T38/V42: owned > free > wishlist > none precedence, computed server-side.
+export type LibraryStatus = 'owned' | 'free' | 'wishlist' | 'none'
+
 export interface LibraryEntry {
   id: number
   igdb_id: number | null
@@ -35,6 +38,8 @@ export interface LibraryEntry {
   notes: string | null
   rating: number | null
   hidden: boolean
+  // T38/V42: wishlist/none entries carry empty platforms + null playtime.
+  library_status: LibraryStatus
   platforms: LibraryPlatform[]
   total_playtime_minutes: number | null
   last_played_at: string | null
@@ -67,6 +72,8 @@ export interface LibraryFilters {
   deckStatus?: DeckStatus[]
   // T36: multi-select; 'none' = unrated (esrb_rating null).
   esrb?: string[]
+  // T38: multi-select on the union's per-entry status.
+  libraryStatus?: LibraryStatus[]
   multiplayer?: boolean
   coop?: boolean
   localMultiplayer?: boolean
@@ -101,6 +108,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.includeHidden) params.set('include_hidden', '1')
   for (const status of filters.deckStatus ?? []) params.append('deck_status[]', status)
   for (const rating of filters.esrb ?? []) params.append('esrb[]', rating)
+  for (const status of filters.libraryStatus ?? []) params.append('library_status[]', status)
   if (filters.multiplayer) params.set('multiplayer', '1')
   if (filters.coop) params.set('coop', '1')
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')

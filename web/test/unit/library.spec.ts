@@ -30,6 +30,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     notes: null,
     rating: null,
     hidden: false,
+    library_status: 'owned',
     platforms: [
       {
         platform: 'steam',
@@ -91,6 +92,15 @@ describe('buildLibraryQuery', () => {
     const params = new URLSearchParams(buildLibraryQuery({ esrb: ['M', 'none'] }))
     expect(params.getAll('esrb[]')).toEqual(['M', 'none'])
     expect(buildLibraryQuery({ esrb: [] })).toBe('')
+  })
+
+  // T38: library_status multi-select — repeated library_status[] params.
+  it('maps libraryStatus to repeated library_status[] params', () => {
+    const params = new URLSearchParams(
+      buildLibraryQuery({ libraryStatus: ['wishlist', 'none'] })
+    )
+    expect(params.getAll('library_status[]')).toEqual(['wishlist', 'none'])
+    expect(buildLibraryQuery({ libraryStatus: [] })).toBe('')
   })
 })
 

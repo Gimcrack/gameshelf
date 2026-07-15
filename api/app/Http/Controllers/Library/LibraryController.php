@@ -44,6 +44,9 @@ class LibraryController extends Controller
             // labels just match nothing. `none` matches unrated (null).
             'esrb' => ['sometimes', 'array'],
             'esrb.*' => ['string', 'max:20'],
+            // T38/V42: multi-select on the union's per-entry status.
+            'library_status' => ['sometimes', 'array'],
+            'library_status.*' => ['in:owned,free,wishlist,none'],
             'multiplayer' => ['sometimes', 'boolean'],
             'coop' => ['sometimes', 'boolean'],
             'local_multiplayer' => ['sometimes', 'boolean'],

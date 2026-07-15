@@ -110,14 +110,21 @@ class WishlistTest extends TestCase
     }
 
     /**
-     * V21: wishlist rows never leak into the library.
+     * V21 (amended T38/V42): wishlist rows now join the /api/library union
+     * view with library_status=wishlist — the exclusion narrowed to the
+     * stats layer only. Default library sort surfaces them alongside owned.
      */
-    public function test_wishlist_games_absent_from_library(): void
+    public function test_wishlist_games_appear_in_library_as_wishlist_status(): void
     {
         $this->fakeIgdbGame();
         $this->postJson('/api/wishlist', ['igdb_id' => 119388])->assertCreated();
 
-        $this->assertSame([], $this->getJson('/api/library')->assertOk()->json());
+        $entries = $this->getJson('/api/library')->assertOk()->json();
+
+        $this->assertCount(1, $entries);
+        $this->assertSame('wishlist', $entries[0]['library_status']);
+        $this->assertSame([], $entries[0]['platforms']);
+        $this->assertNull($entries[0]['total_playtime_minutes']);
     }
 
     /**

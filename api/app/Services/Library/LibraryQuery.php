@@ -6,15 +6,26 @@ use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\User;
 use App\Models\UserGameMeta;
+use App\Models\WishlistItem;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 
 /**
  * V1: owned_games keeps one row per (user, platform, game); this service
  * dedupes to one entry per game at query time.
+ *
+ * V42: the library is a query-time union — owned_games ∪ wishlist_items ∪
+ * meta-orphans — with a library_status per entry. Data-layer disjointness
+ * (V21, V10) is untouched; only this read path assembles the union.
  */
 class LibraryQuery
 {
+    /**
+     * V42: statuses backed by owned_games rows — the only ones stats,
+     * backlog and system collections count.
+     */
+    private const OWNED_STATUSES = ['owned', 'free'];
     /**
      * @param  array<string, mixed>  $filters
      * @return list<array<string, mixed>>
@@ -36,7 +47,11 @@ class LibraryQuery
      */
     public function facetsForUser(User $user): array
     {
-        $entries = $this->entriesFor($user)->reject(fn (array $e) => $e['hidden']);
+        // I.api/V36: facet vocabulary comes from owned games only —
+        // wishlist/none union rows (V42) don't widen it.
+        $entries = $this->entriesFor($user)->reject(
+            fn (array $e) => $e['hidden'] || ! in_array($e['library_status'], self::OWNED_STATUSES, true),
+        );
 
         return [
             'genres' => $this->distinctValues($entries, 'genres'),
@@ -77,21 +92,52 @@ class LibraryQuery
      * V1/V6: dedupes owned_games to one entry per game, joining user meta
      * at read time — the shared base both forUser and facetsForUser build on.
      *
+     * V42: unioned with wishlist_items and meta-orphans (meta rows whose
+     * game has no owned or wishlist row — they survive V6/V24).
+     *
      * @return Collection<int, array<string, mixed>>
      */
     private function entriesFor(User $user): Collection
     {
         $metaByGame = UserGameMeta::where('user_id', $user->id)
+            ->with('game')
             ->get()
             ->keyBy('game_id');
 
-        return OwnedGame::query()
+        $owned = OwnedGame::query()
             ->where('user_id', $user->id)
             ->with(['game', 'connection'])
             ->get()
             ->groupBy('game_id')
             ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id)))
             ->values();
+
+        // V21: disjoint from owned at the data layer — no overlap check needed.
+        $wishlist = WishlistItem::query()
+            ->where('user_id', $user->id)
+            ->whereNull('suppressed_at')
+            ->with('game')
+            ->get()
+            ->map(fn (WishlistItem $item) => $this->virtualEntry(
+                $item->game,
+                $metaByGame->get($item->game_id),
+                'wishlist',
+                $item->added_at,
+            ));
+
+        $coveredGameIds = $owned->pluck('id')->concat($wishlist->pluck('id'));
+
+        $orphans = $metaByGame
+            ->whereNotIn('game_id', $coveredGameIds)
+            ->values()
+            ->map(fn (UserGameMeta $meta) => $this->virtualEntry(
+                $meta->game,
+                $meta,
+                'none',
+                $meta->created_at,
+            ));
+
+        return $owned->concat($wishlist)->concat($orphans)->values();
     }
 
     /**
@@ -121,13 +167,29 @@ class LibraryQuery
             ->with(['game', 'connection'])
             ->get();
 
-        if ($group->isEmpty()) {
-            return null;
-        }
-
         $meta = UserGameMeta::where('user_id', $user->id)->where('game_id', $game->id)->first();
 
-        return $this->entry($group, $meta);
+        if ($group->isNotEmpty()) {
+            return $this->entry($group, $meta);
+        }
+
+        // V42: union rows resolve here too — a wishlist or meta-orphan
+        // entry is fetchable, not a 404.
+        $wish = WishlistItem::query()
+            ->where('user_id', $user->id)
+            ->where('game_id', $game->id)
+            ->whereNull('suppressed_at')
+            ->first();
+
+        if ($wish !== null) {
+            return $this->virtualEntry($game, $meta, 'wishlist', $wish->added_at);
+        }
+
+        if ($meta !== null) {
+            return $this->virtualEntry($game, $meta, 'none', $meta->created_at);
+        }
+
+        return null;
     }
 
     /**
@@ -136,9 +198,56 @@ class LibraryQuery
      */
     private function entry(Collection $group, ?UserGameMeta $meta): array
     {
-        $game = $group->first()->game;
         $knownPlaytimes = $group->pluck('playtime_minutes')->reject(fn ($v) => $v === null);
 
+        return [
+            ...$this->gameFields($group->first()->game),
+            ...$this->metaFields($meta),
+            // V42: free iff every owning row is F2P (T37) — one paid row
+            // makes the game owned.
+            'library_status' => $group->every(fn (OwnedGame $owned) => $owned->free_to_play)
+                ? 'free'
+                : 'owned',
+            'platforms' => $group->map(fn (OwnedGame $owned) => [
+                'platform' => $owned->connection->platform,
+                // V13: disconnected status flows through for UI badges.
+                'connection_status' => $owned->connection->status->value,
+                'playtime_minutes' => $owned->playtime_minutes,
+                'last_played_at' => $owned->last_played_at?->toIso8601String(),
+                // T26/V31: Steam-only, null = never successfully checked.
+                'deck_status' => $owned->deck_status?->value,
+            ])->values()->all(),
+            // V12: all-null playtime stays null (unknown), never 0.
+            'total_playtime_minutes' => $knownPlaytimes->isEmpty() ? null : $knownPlaytimes->sum(),
+            'last_played_at' => $group->max('last_played_at')?->toIso8601String(),
+            'added_at' => $group->min('added_at')?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * V42: wishlist / meta-orphan union rows — no owning platforms, so
+     * platforms stay empty and playtime null (I.api).
+     *
+     * @return array<string, mixed>
+     */
+    private function virtualEntry(Game $game, ?UserGameMeta $meta, string $libraryStatus, ?Carbon $addedAt): array
+    {
+        return [
+            ...$this->gameFields($game),
+            ...$this->metaFields($meta),
+            'library_status' => $libraryStatus,
+            'platforms' => [],
+            'total_playtime_minutes' => null,
+            'last_played_at' => null,
+            'added_at' => $addedAt?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function gameFields(Game $game): array
+    {
         return [
             'id' => $game->id,
             'igdb_id' => $game->igdb_id,
@@ -157,6 +266,15 @@ class LibraryQuery
             'coop' => $game->coop,
             'local_multiplayer' => $game->local_multiplayer,
             'local_coop' => $game->local_coop,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function metaFields(?UserGameMeta $meta): array
+    {
+        return [
             // No meta row means untouched — status defaults to unplayed.
             'status' => $meta?->status->value ?? 'unplayed',
             // V12: only a real meta row counts as user-declared for the
@@ -167,19 +285,6 @@ class LibraryQuery
             'rating' => $meta?->rating,
             // V28: no meta row means never hidden.
             'hidden' => $meta?->hidden ?? false,
-            'platforms' => $group->map(fn (OwnedGame $owned) => [
-                'platform' => $owned->connection->platform,
-                // V13: disconnected status flows through for UI badges.
-                'connection_status' => $owned->connection->status->value,
-                'playtime_minutes' => $owned->playtime_minutes,
-                'last_played_at' => $owned->last_played_at?->toIso8601String(),
-                // T26/V31: Steam-only, null = never successfully checked.
-                'deck_status' => $owned->deck_status?->value,
-            ])->values()->all(),
-            // V12: all-null playtime stays null (unknown), never 0.
-            'total_playtime_minutes' => $knownPlaytimes->isEmpty() ? null : $knownPlaytimes->sum(),
-            'last_played_at' => $group->max('last_played_at')?->toIso8601String(),
-            'added_at' => $group->min('added_at')?->toIso8601String(),
         ];
     }
 
@@ -235,6 +340,10 @@ class LibraryQuery
             // working.
             ->when(isset($filters['esrb']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array($e['esrb_rating'] ?? 'none', $this->valueList($filters['esrb']), true),
+            ))
+            // T38/V42: multi-select on the union's per-entry status.
+            ->when(isset($filters['library_status']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array($e['library_status'], $this->valueList($filters['library_status']), true),
             ))
             // T27/V32: equality against the derived flag; null (best-effort
             // miss) matches neither an explicit true nor false query.
@@ -293,6 +402,12 @@ class LibraryQuery
      */
     private function systemCollection(Collection $entries, string $slug): Collection
     {
+        // V42: system collections count owned+free only — wishlist and
+        // meta-orphan union rows never qualify (V21 stats-layer exclusion).
+        $entries = $entries->filter(
+            fn (array $e) => in_array($e['library_status'], self::OWNED_STATUSES, true),
+        );
+
         return match ($slug) {
             // V12: known-zero playtime or user-declared unplayed; null
             // playtime alone stays out.

@@ -78,6 +78,34 @@ class BacklogStatsTest extends TestCase
     }
 
     /**
+     * V21/V42: wishlist union rows never reach the stats layer — an
+     * unplayed-flavoured wish must not inflate unplayed_count.
+     */
+    public function test_wishlist_and_orphan_excluded_from_backlog(): void
+    {
+        $this->own('Owned Unplayed', [], ['playtime_minutes' => 0]);
+
+        $wished = Game::create(['title' => 'Wished Game']);
+        \App\Models\WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $wished->id,
+            'added_at' => '2026-02-01 00:00:00',
+            'origin' => 'local',
+        ]);
+
+        $orphan = Game::create(['title' => 'Orphan Game']);
+        UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $orphan->id,
+            'status' => 'unplayed',
+        ]);
+
+        $this->getJson('/api/stats/backlog')
+            ->assertOk()
+            ->assertJsonPath('unplayed_count', 1);
+    }
+
+    /**
      * §C: est_hours only counts unplayed games with time-to-beat data.
      */
     public function test_est_hours_gated_on_time_to_beat(): void

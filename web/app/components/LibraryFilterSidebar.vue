@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { DeckStatus, LibraryFacets } from '~/utils/library'
+import type { DeckStatus, LibraryFacets, LibraryStatus } from '~/utils/library'
 import { unifiedGameModeOptions } from '~/utils/facets'
 
 const props = defineProps<{ facets: LibraryFacets }>()
@@ -15,6 +15,8 @@ const gameModes = defineModel<string[]>('gameModes', { default: () => [] })
 const deckStatuses = defineModel<DeckStatus[]>('deckStatuses', { default: () => [] })
 // T36: multi-select; 'none' = unrated, displayed "No Rating".
 const esrb = defineModel<string[]>('esrb', { default: () => [] })
+// T38/V42: union per-entry status.
+const libraryStatuses = defineModel<LibraryStatus[]>('libraryStatuses', { default: () => [] })
 const unplayed = defineModel<boolean>('unplayed', { default: false })
 const showHidden = defineModel<boolean>('showHidden', { default: false })
 
@@ -22,6 +24,16 @@ const showHidden = defineModel<boolean>('showHidden', { default: false })
 const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'verified']
 
 const ESRB_LABELS: Record<string, string> = { none: 'No Rating' }
+
+// T38: static list — no facets source for library status (I.api).
+const LIBRARY_STATUSES: LibraryStatus[] = ['owned', 'free', 'wishlist', 'none']
+
+const LIBRARY_STATUS_LABELS: Record<string, string> = {
+  owned: 'Owned',
+  free: 'Free-to-play',
+  wishlist: 'Wishlist',
+  none: 'Not owned'
+}
 </script>
 
 <template>
@@ -33,6 +45,12 @@ const ESRB_LABELS: Record<string, string> = { none: 'No Rating' }
     <FacetFilter v-model="gameModes" label="Game mode" :options="gameModeOptions" />
     <FacetFilter v-model="esrb" label="ESRB" :options="facets.esrb_ratings" :labels="ESRB_LABELS" />
     <FacetFilter v-model="deckStatuses" label="Steam Deck" :options="DECK_STATUSES" />
+    <FacetFilter
+      v-model="libraryStatuses"
+      label="Library status"
+      :options="LIBRARY_STATUSES"
+      :labels="LIBRARY_STATUS_LABELS"
+    />
 
     <div class="flex flex-col gap-1">
       <label class="flex items-center gap-2 pb-0.5">
