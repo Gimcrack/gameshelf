@@ -73,6 +73,37 @@ class SteamClient
     }
 
     /**
+     * Public identity for a SteamID64 — name/avatar are visible even when
+     * the account's game library is private (V15 is a library-privacy
+     * concern, not an identity one). Null when Steam has no such account.
+     *
+     * @return array{steam_id: string, persona_name: string, avatar_url: string}|null
+     */
+    public function playerSummary(string $steamId): ?array
+    {
+        $response = Http::get(self::BASE_URL.'/ISteamUser/GetPlayerSummaries/v2/', [
+            'key' => $this->apiKey,
+            'steamids' => $steamId,
+        ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException('Steam GetPlayerSummaries request failed: '.$response->status());
+        }
+
+        $player = $response->json('response.players.0');
+
+        if ($player === null) {
+            return null;
+        }
+
+        return [
+            'steam_id' => (string) $player['steamid'],
+            'persona_name' => (string) $player['personaname'],
+            'avatar_url' => (string) $player['avatarfull'],
+        ];
+    }
+
+    /**
      * Wishlist appids for a SteamID64, or null for private wishlists —
      * Steam signals privacy with an empty response object (V15 pattern).
      * READ ONLY: Steam has no public wishlist write API (V22).

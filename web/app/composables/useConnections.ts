@@ -7,6 +7,12 @@ export type ConnectPayload =
   | { platform: 'steam'; steam_id?: string; vanity_url?: string }
   | { platform: 'gog'; code: string }
 
+export interface SteamIdentity {
+  steam_id: string
+  persona_name: string
+  avatar_url: string
+}
+
 export function useConnections() {
   const connections: Ref<PlatformConnection[]> = useState<PlatformConnection[]>(
     'connections',
@@ -26,6 +32,21 @@ export function useConnections() {
     } finally {
       pending.value = false
     }
+  }
+
+  /**
+   * V25: pure identity preview — never creates a connection. Caller shows
+   * the result and requires explicit confirm before calling connect().
+   */
+  async function resolveSteamIdentity(payload: {
+    steam_id?: string
+    vanity_url?: string
+  }): Promise<SteamIdentity> {
+    const params = new URLSearchParams(
+      payload.steam_id ? { steam_id: payload.steam_id } : { vanity_url: payload.vanity_url ?? '' }
+    )
+
+    return apiFetch<SteamIdentity>(`/api/connections/steam/resolve?${params}`)
   }
 
   async function connect(payload: ConnectPayload): Promise<void> {
@@ -50,5 +71,14 @@ export function useConnections() {
     connections.value = connections.value.map((c) => (c.id === id ? updated : c))
   }
 
-  return { connections, pending, error, fetchConnections, connect, syncNow, disconnect }
+  return {
+    connections,
+    pending,
+    error,
+    fetchConnections,
+    resolveSteamIdentity,
+    connect,
+    syncNow,
+    disconnect
+  }
 }

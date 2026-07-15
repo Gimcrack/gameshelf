@@ -56,6 +56,7 @@ Source: `design-doc.md` v0.1.
 - api: `GET /api/discover/franchises` → [{franchise, owned: [...], missing: [hit...]}] via IGDB franchise data. Edition/remaster noise accepted v1. Added T18.
 - api: `GET /api/discover/upcoming` → hits w/ release_date ∈ next 6 mo, filtered by caller's top owned genres. Added T19.
 - api: `GET /api/stats/backlog` → {unplayed_count, est_hours, burndown} (avg hrs/wk last N wks → yrs to clear); shareable card view
+- api: `GET /api/connections/steam/resolve` {steam_id|vanity_url} → 200 {steam_id,persona_name,avatar_url} | 404 no player | 422 invalid input. Pure lookup, ⊥ creates connection. Added T21.
 - ext: Steam Web API `GetOwnedGames` — Steam ID + API key; OpenID identity-only, library read via public Web API; returns `playtime_2weeks`
 - ext: Steam `ResolveVanityURL` — vanity URL → SteamID64 at connect
 - ext: GOG OAuth2 → embedded API for owned games; tokens expire ~1 hr → refresh flow
@@ -97,6 +98,7 @@ V21: wishlist ∩ library = ∅. Add-to-wishlist of owned game → 200 no-op w/ 
 V22: wishlist sync idempotent + asymmetric. Remote removal propagates: item previously platform-present, now absent from pull → local wish deleted (unless other platform still lists | tombstone pending — then flag clears only). ⊥ re-push after remote removal (thrash). Pull steam+gog → upsert (⊥ dups per unique key); local delete → tombstone (`suppressed_at`) → ⊥ re-import while platform still lists it, gog_present rows also pushed remove to GOG; local adds push to GOG only when external mapping resolves; Steam ⊥ pushed ever (no write API). Remote GOG write ≤ 1 per state change. Sync ⊥ run inline (V8 queue).
 V23: Steam sync ⊥ pass `include_played_free_games` → matches Steam default, excludes F2P titles "anyone technically owns" (not real library intent). Manual F2P add (T14) unaffected.
 V24: Steam sync reflects current Steam state, ⊥ just accretes — owned_games rows w/ platform_game_id ∉ fresh fetch pruned each sync (covers legacy noise + genuinely-removed games). Snapshot history cascades w/ row (V16 data meaningless off-library). V15 null-response (private) short-circuits before reconciliation → never wrongly wipes on privacy flip.
+V25: Steam connect ! resolve+display identity (persona_name/avatar) → user ! confirm before `platform_connections` row created. ⊥ blind-linked accounts.
 
 ## §T tasks
 
@@ -121,6 +123,7 @@ T17|x|wishlist core: wishlist_items table, GET/POST/DELETE /api/wishlist (games 
 T18|.|franchise gaps: IGDB franchise lookup for owned games, /api/discover/franchises, "complete the series" rail|V4,V20,§C.discovery
 T19|.|upcoming releases: IGDB release_dates ∈ 6 mo window × caller top genres, /api/discover/upcoming, rail on /discover|V4,V20,§C.discovery
 T20|x|wishlist platform sync: queued job — pull steam (read-only, appdetails titles) + gog wishlists, tombstone suppression, push local add/remove → GOG via external_games mapping, POST /api/wishlist/sync throttled, sync status in wishlist UI|V8,V14,V15,V21,V22,I.gog,I.steam,I.igdb
+T21|x|Steam connect identity confirm: resolve+preview (persona_name/avatar) before creating connection, FE two-step confirm|V25,I.steam
 
 ## §B bugs
 

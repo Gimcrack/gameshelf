@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { buildGogAuthUrl, connectionStatusLabel } from '../utils/connections'
 import type { ApiError } from '../utils/api'
+import type { SteamIdentity } from '../composables/useConnections'
 
 const config = useRuntimeConfig()
-const { connections, pending, error, fetchConnections, connect, syncNow, disconnect } =
-  useConnections()
+const {
+  connections,
+  pending,
+  error,
+  fetchConnections,
+  resolveSteamIdentity,
+  connect,
+  syncNow,
+  disconnect
+} = useConnections()
 
 const steamInput = ref('')
 const gogCode = ref('')
 const formError = ref('')
 const busy = ref(false)
+const resolvedIdentity = ref<SteamIdentity | null>(null)
 
 const gogAuthUrl = computed(() => buildGogAuthUrl(config.public.gogClientId as string))
 const hasSteam = computed(() =>
@@ -33,16 +43,31 @@ async function run(action: () => Promise<void>): Promise<void> {
   }
 }
 
-function connectSteam(): Promise<void> {
+/** V25: look up identity first — nothing is connected yet. */
+function lookUpSteam(): Promise<void> {
   const input = steamInput.value.trim()
   const payload = /^\d{17}$/.test(input)
-    ? { platform: 'steam' as const, steam_id: input }
-    : { platform: 'steam' as const, vanity_url: input }
+    ? { steam_id: input }
+    : { vanity_url: input }
 
   return run(async () => {
-    await connect(payload)
+    resolvedIdentity.value = await resolveSteamIdentity(payload)
+  })
+}
+
+function confirmSteamConnect(): Promise<void> {
+  const identity = resolvedIdentity.value
+  if (!identity) return Promise.resolve()
+
+  return run(async () => {
+    await connect({ platform: 'steam', steam_id: identity.steam_id })
+    resolvedIdentity.value = null
     steamInput.value = ''
   })
+}
+
+function cancelSteamResolve(): void {
+  resolvedIdentity.value = null
 }
 
 function connectGog(): Promise<void> {
@@ -116,19 +141,52 @@ function connectGog(): Promise<void> {
     <div class="grid gap-4 sm:grid-cols-2">
       <div v-if="!hasSteam" class="rounded-md border border-slate-800 p-4">
         <h3 class="mb-2 text-sm font-semibold text-slate-100">Connect Steam</h3>
-        <input
-          v-model="steamInput"
-          type="text"
-          placeholder="SteamID64 or vanity name"
-          class="mb-2 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
-        />
-        <button
-          :disabled="busy || !steamInput.trim()"
-          class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
-          @click="connectSteam"
-        >
-          Connect Steam
-        </button>
+
+        <template v-if="!resolvedIdentity">
+          <input
+            v-model="steamInput"
+            type="text"
+            placeholder="SteamID64 or vanity name"
+            class="mb-2 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+          />
+          <button
+            :disabled="busy || !steamInput.trim()"
+            class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+            @click="lookUpSteam"
+          >
+            Look up
+          </button>
+        </template>
+
+        <template v-else>
+          <div class="mb-3 flex items-center gap-3 rounded-md border border-slate-800 bg-slate-950 p-2">
+            <img
+              :src="resolvedIdentity.avatar_url"
+              :alt="resolvedIdentity.persona_name"
+              class="h-10 w-10 rounded"
+            />
+            <div>
+              <p class="text-sm font-semibold text-slate-100">{{ resolvedIdentity.persona_name }}</p>
+              <p class="text-xs text-slate-500">Is this you?</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button
+              :disabled="busy"
+              class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+              @click="confirmSteamConnect"
+            >
+              Connect as this account
+            </button>
+            <button
+              :disabled="busy"
+              class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-rose-400/60 hover:text-rose-300 disabled:opacity-50"
+              @click="cancelSteamResolve"
+            >
+              Cancel
+            </button>
+          </div>
+        </template>
       </div>
 
       <div v-if="!hasGog" class="rounded-md border border-slate-800 p-4">

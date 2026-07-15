@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tokens/{tokenId}', [TokenController::class, 'destroy']);
 
     Route::get('/connections', [ConnectionController::class, 'index']);
+    Route::get('/connections/steam/resolve', [ConnectionController::class, 'resolveSteam']);
     Route::post('/connections', [ConnectionController::class, 'store']);
     Route::post('/connections/{connection}/sync', [ConnectionController::class, 'sync']);
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);

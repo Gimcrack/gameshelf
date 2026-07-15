@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Connections;
 
 use App\Enums\ConnectionStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Connections\ResolveSteamIdentityRequest;
 use App\Http\Requests\Connections\StoreConnectionRequest;
 use App\Jobs\SyncConnection;
 use App\Models\PlatformConnection;
@@ -47,8 +48,7 @@ class ConnectionController extends Controller
      */
     private function connectSteam(StoreConnectionRequest $request, array $validated): PlatformConnection
     {
-        $steamId = $validated['steam_id']
-            ?? app(SteamClient::class)->resolveVanityUrl($validated['vanity_url']);
+        $steamId = $this->resolveSteamId($validated);
 
         if ($steamId === null) {
             throw ValidationException::withMessages([
@@ -61,6 +61,39 @@ class ConnectionController extends Controller
             'external_account_id' => $steamId,
             'status' => ConnectionStatus::Pending,
         ]);
+    }
+
+    /**
+     * V25: identity preview — resolves and shows persona_name/avatar_url so
+     * the caller can confirm before a connection row ever exists. Basic
+     * identity is public even for privacy-locked profiles (V15 is about the
+     * game library, not identity), so this works regardless of later sync
+     * privacy state.
+     */
+    public function resolveSteam(ResolveSteamIdentityRequest $request): JsonResponse
+    {
+        $steamId = $this->resolveSteamId($request->validated());
+
+        if ($steamId === null) {
+            throw ValidationException::withMessages([
+                'vanity_url' => ['No Steam account matches that vanity URL.'],
+            ]);
+        }
+
+        $identity = app(SteamClient::class)->playerSummary($steamId);
+
+        abort_if($identity === null, Response::HTTP_NOT_FOUND);
+
+        return response()->json($identity);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveSteamId(array $validated): ?string
+    {
+        return $validated['steam_id']
+            ?? app(SteamClient::class)->resolveVanityUrl($validated['vanity_url']);
     }
 
     /**
