@@ -17,12 +17,14 @@ const status = ref<GameStatus>('unplayed')
 const tagsInput = ref('')
 const notes = ref('')
 const rating = ref<number | null>(null)
+const hidden = ref(false)
 
 function syncFormFromEntry(loaded: LibraryEntry): void {
   status.value = loaded.status
   tagsInput.value = loaded.tags.join(', ')
   notes.value = loaded.notes ?? ''
   rating.value = loaded.rating
+  hidden.value = loaded.hidden
 }
 
 async function load(): Promise<void> {
@@ -54,7 +56,8 @@ async function onSave(): Promise<void> {
         .map((t) => t.trim())
         .filter((t) => t.length > 0),
       notes: notes.value.trim() ? notes.value.trim() : null,
-      rating: rating.value
+      rating: rating.value,
+      hidden: hidden.value
     })
     await load()
   } catch (err) {
@@ -184,6 +187,11 @@ async function onSave(): Promise<void> {
               rows="3"
               class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
             />
+          </label>
+
+          <label class="flex items-center gap-2 text-sm text-slate-400">
+            <input v-model="hidden" type="checkbox" class="accent-teal-500" />
+            Hidden from library
           </label>
 
           <button

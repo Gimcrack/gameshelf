@@ -14,7 +14,17 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     title: 'Portal 2',
     cover_url: null,
     genres: [],
+    themes: [],
+    keywords: [],
+    game_modes: [],
     release_date: null,
+    time_to_beat_minutes: null,
+    status: 'unplayed',
+    status_declared: false,
+    tags: [],
+    notes: null,
+    rating: null,
+    hidden: false,
     platforms: [
       {
         platform: 'steam',
@@ -55,6 +65,12 @@ describe('buildLibraryQuery', () => {
   it('omits unset filters', () => {
     expect(buildLibraryQuery({})).toBe('')
     expect(buildLibraryQuery({ unplayed: false })).toBe('')
+  })
+
+  // V28: include_hidden=1 reveals hidden games.
+  it('maps includeHidden to include_hidden=1', () => {
+    expect(buildLibraryQuery({ includeHidden: true })).toBe('include_hidden=1')
+    expect(buildLibraryQuery({ includeHidden: false })).toBe('')
   })
 })
 

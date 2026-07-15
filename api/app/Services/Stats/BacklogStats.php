@@ -4,6 +4,7 @@ namespace App\Services\Stats;
 
 use App\Models\PlaytimeSnapshot;
 use App\Models\User;
+use App\Models\UserGameMeta;
 use App\Services\Library\LibraryQuery;
 use Illuminate\Support\Facades\Date;
 
@@ -57,8 +58,15 @@ class BacklogStats
     {
         $windowStart = Date::now()->subWeeks(self::PACE_WINDOW_WEEKS);
 
+        // V28: a hidden game's playtime growth doesn't count toward pace
+        // either — same exclusion as the rest of this endpoint.
+        $hiddenGameIds = UserGameMeta::where('user_id', $user->id)
+            ->where('hidden', true)
+            ->pluck('game_id');
+
         $deltaMinutes = PlaytimeSnapshot::query()
-            ->whereHas('ownedGame', fn ($query) => $query->where('user_id', $user->id))
+            ->whereHas('ownedGame', fn ($query) => $query->where('user_id', $user->id)
+                ->whereNotIn('game_id', $hiddenGameIds))
             ->where('captured_at', '>=', $windowStart)
             ->get()
             ->groupBy('owned_game_id')

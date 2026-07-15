@@ -302,4 +302,44 @@ class LibraryTest extends TestCase
             ->getJson("/api/library/{$game->id}")
             ->assertUnauthorized();
     }
+
+    /**
+     * V28: hidden games excluded from /api/library by default.
+     */
+    public function test_hidden_games_excluded_by_default(): void
+    {
+        $hidden = $this->game('Hidden Game');
+        $this->own($this->connection('steam'), $hidden, 10);
+        \App\Models\UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hidden->id,
+            'hidden' => true,
+        ]);
+        $this->own($this->connection('steam'), $this->game('Visible Game'), 10);
+
+        $titles = array_column($this->getJson('/api/library')->assertOk()->json(), 'title');
+
+        $this->assertSame(['Visible Game'], $titles);
+    }
+
+    /**
+     * V28: include_hidden=1 reveals them.
+     */
+    public function test_include_hidden_reveals_hidden_games(): void
+    {
+        $hidden = $this->game('Hidden Game');
+        $this->own($this->connection('steam'), $hidden, 10);
+        \App\Models\UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hidden->id,
+            'hidden' => true,
+        ]);
+
+        $titles = array_column(
+            $this->getJson('/api/library?include_hidden=1')->assertOk()->json(),
+            'title',
+        );
+
+        $this->assertSame(['Hidden Game'], $titles);
+    }
 }

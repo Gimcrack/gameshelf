@@ -135,4 +135,34 @@ class BacklogStatsTest extends TestCase
         // JSON decodes 0.0 as int 0 — loose equality on purpose.
         $this->assertEquals(0, $response->json('burndown.avg_hours_per_week'));
     }
+
+    /**
+     * V28: hidden games excluded from unplayed_count/est_hours and pace.
+     */
+    public function test_hidden_games_excluded_from_backlog_stats(): void
+    {
+        $this->own('Visible Unplayed', ['time_to_beat_minutes' => 300], ['playtime_minutes' => 0]);
+        $hidden = $this->own('Hidden Unplayed', ['time_to_beat_minutes' => 600], ['playtime_minutes' => 0]);
+        UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hidden->game_id,
+            'hidden' => true,
+        ]);
+
+        $hiddenActive = $this->own('Hidden Active', [], ['playtime_minutes' => 1440]);
+        UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hiddenActive->game_id,
+            'hidden' => true,
+        ]);
+        $this->snapshot($hiddenActive, 0, now()->subWeeks(4)->addDay()->toDateTimeString());
+        $this->snapshot($hiddenActive, 1440, now()->toDateTimeString());
+
+        $response = $this->getJson('/api/stats/backlog')->assertOk();
+
+        $this->assertSame(1, $response->json('unplayed_count'));
+        $this->assertSame(5, $response->json('est_hours'));
+        // Hidden active game's snapshot delta contributes nothing.
+        $this->assertEquals(0, $response->json('burndown.avg_hours_per_week'));
+    }
 }

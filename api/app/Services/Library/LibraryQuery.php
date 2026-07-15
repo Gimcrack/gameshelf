@@ -91,6 +91,8 @@ class LibraryQuery
             'tags' => $meta?->tags ?? [],
             'notes' => $meta?->notes,
             'rating' => $meta?->rating,
+            // V28: no meta row means never hidden.
+            'hidden' => $meta?->hidden ?? false,
             'platforms' => $group->map(fn (OwnedGame $owned) => [
                 'platform' => $owned->connection->platform,
                 // V13: disconnected status flows through for UI badges.
@@ -113,6 +115,10 @@ class LibraryQuery
     private function filter(Collection $entries, array $filters): Collection
     {
         return $entries
+            // V28: hidden games excluded by default; include_hidden=1 reveals them.
+            ->when(empty($filters['include_hidden']), fn (Collection $c) => $c->filter(
+                fn (array $e) => ! $e['hidden'],
+            ))
             ->when(isset($filters['platform']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array(
                     $filters['platform'],

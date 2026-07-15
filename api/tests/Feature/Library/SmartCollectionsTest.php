@@ -149,4 +149,16 @@ class SmartCollectionsTest extends TestCase
     {
         $this->getJson('/api/library?collection=nonsense')->assertUnprocessable();
     }
+
+    /**
+     * V28: hidden games excluded from system smart collections too.
+     */
+    public function test_hidden_games_excluded_from_smart_collections(): void
+    {
+        $this->own('Visible Unplayed', [], ['playtime_minutes' => 0]);
+        $hidden = $this->own('Hidden Unplayed', [], ['playtime_minutes' => 0]);
+        $this->meta($hidden, ['hidden' => true]);
+
+        $this->assertSame(['Visible Unplayed'], $this->titles('collection=unplayed'));
+    }
 }

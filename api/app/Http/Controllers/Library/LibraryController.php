@@ -31,6 +31,8 @@ class LibraryController extends Controller
             'status' => ['sometimes', Rule::enum(GameStatus::class)],
             'tags' => ['sometimes', 'string', 'max:500'],
             'collection' => ['sometimes', 'string', 'max:100'],
+            // V28: hidden games excluded by default; this reveals them.
+            'include_hidden' => ['sometimes', 'boolean'],
         ]);
 
         if (isset($validated['collection'])) {

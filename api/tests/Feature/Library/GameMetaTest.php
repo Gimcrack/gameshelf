@@ -149,5 +149,26 @@ class GameMetaTest extends TestCase
         $this->assertSame('playing', $entry['status']);
         $this->assertSame(['co-op'], $entry['tags']);
         $this->assertSame(4, $entry['rating']);
+        $this->assertFalse($entry['hidden']);
+    }
+
+    /**
+     * T25/V28: hidden toggles via the same partial-upsert meta endpoint.
+     */
+    public function test_hidden_toggle_via_meta(): void
+    {
+        $game = $this->ownedGame();
+
+        $this->putJson("/api/library/{$game->id}/meta", ['hidden' => true])
+            ->assertOk()
+            ->assertJsonPath('hidden', true);
+
+        $this->assertSame([], $this->getJson('/api/library')->assertOk()->json());
+
+        $this->putJson("/api/library/{$game->id}/meta", ['hidden' => false])
+            ->assertOk()
+            ->assertJsonPath('hidden', false);
+
+        $this->assertCount(1, $this->getJson('/api/library')->assertOk()->json());
     }
 }

@@ -23,6 +23,7 @@ export interface LibraryEntry {
   tags: string[]
   notes: string | null
   rating: number | null
+  hidden: boolean
   platforms: LibraryPlatform[]
   total_playtime_minutes: number | null
   last_played_at: string | null
@@ -34,6 +35,7 @@ export interface LibraryMetaUpdate {
   tags?: string[]
   notes?: string | null
   rating?: number | null
+  hidden?: boolean
 }
 
 export type LibrarySort = 'alpha' | 'playtime' | 'last_played' | 'added'
@@ -49,6 +51,7 @@ export interface LibraryFilters {
   playtimeMin?: number
   playtimeMax?: number
   unplayed?: boolean
+  includeHidden?: boolean
 }
 
 /** Maps camelCase filter state to the API's snake_case query string. */
@@ -65,6 +68,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.playtimeMin !== undefined) params.set('playtime_min', String(filters.playtimeMin))
   if (filters.playtimeMax !== undefined) params.set('playtime_max', String(filters.playtimeMax))
   if (filters.unplayed) params.set('unplayed', '1')
+  if (filters.includeHidden) params.set('include_hidden', '1')
 
   return params.toString()
 }

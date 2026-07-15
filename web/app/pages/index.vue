@@ -2,7 +2,7 @@
 import type { LibraryFilters, LibrarySort } from '../utils/library'
 
 const { user, logout, fetchUser } = useAuth()
-const { entries, pending, error, fetchLibrary, removeManual } = useLibrary()
+const { entries, pending, error, fetchLibrary, removeManual, updateMeta } = useLibrary()
 const { collections, fetchCollections, addGame } = useCollections()
 
 const manualCollections = computed(() => collections.value.filter((c) => c.type === 'manual'))
@@ -17,6 +17,7 @@ const theme = ref('')
 const keyword = ref('')
 const gameMode = ref('')
 const unplayed = ref(false)
+const showHidden = ref(false)
 
 const filters = computed<LibraryFilters>(() => ({
   sort: sort.value,
@@ -26,7 +27,8 @@ const filters = computed<LibraryFilters>(() => ({
   ...(theme.value.trim() ? { theme: theme.value.trim() } : {}),
   ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
   ...(gameMode.value.trim() ? { gameMode: gameMode.value.trim() } : {}),
-  ...(unplayed.value ? { unplayed: true } : {})
+  ...(unplayed.value ? { unplayed: true } : {}),
+  ...(showHidden.value ? { includeHidden: true } : {})
 }))
 
 onMounted(async () => {
@@ -46,6 +48,11 @@ async function onRemoveManual(gameId: number): Promise<void> {
 
 async function onAddToCollection(collectionId: number, gameId: number): Promise<void> {
   await addGame(collectionId, gameId)
+}
+
+async function onToggleHidden(gameId: number, hidden: boolean): Promise<void> {
+  await updateMeta(gameId, { hidden })
+  await fetchLibrary(filters.value)
 }
 
 async function onLogout(): Promise<void> {
@@ -157,6 +164,10 @@ async function onLogout(): Promise<void> {
         <input v-model="unplayed" type="checkbox" class="accent-teal-500" />
         Unplayed only
       </label>
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="showHidden" type="checkbox" class="accent-teal-500" />
+        Show hidden
+      </label>
     </section>
 
     <section>
@@ -178,6 +189,7 @@ async function onLogout(): Promise<void> {
           :manual-collections="manualCollections"
           @remove-manual="onRemoveManual"
           @add-to-collection="onAddToCollection"
+          @toggle-hidden="onToggleHidden"
         />
       </div>
     </section>

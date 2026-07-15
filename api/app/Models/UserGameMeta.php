@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * V6: user-owned metadata, fully decoupled from platform sync — re-syncs
  * never read or write this table.
  */
-#[Fillable(['user_id', 'game_id', 'status', 'tags', 'notes', 'rating'])]
+#[Fillable(['user_id', 'game_id', 'status', 'tags', 'notes', 'rating', 'hidden'])]
 class UserGameMeta extends Model
 {
     protected $table = 'user_game_meta';
@@ -24,6 +24,7 @@ class UserGameMeta extends Model
         return [
             'status' => GameStatus::class,
             'tags' => 'array',
+            'hidden' => 'boolean',
         ];
     }
 

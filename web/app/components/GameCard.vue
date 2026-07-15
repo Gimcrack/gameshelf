@@ -11,6 +11,7 @@ const props = defineProps<{ entry: LibraryEntry; manualCollections: Collection[]
 const emit = defineEmits<{
   (e: 'remove-manual', gameId: number): void
   (e: 'add-to-collection', collectionId: number, gameId: number): void
+  (e: 'toggle-hidden', gameId: number, hidden: boolean): void
 }>()
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
@@ -27,7 +28,7 @@ function onAddToCollection(): void {
 <template>
   <article
     class="group flex flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900 transition duration-200 hover:-translate-y-1 hover:border-teal-400/60 hover:shadow-lg hover:shadow-teal-500/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-    :class="{ 'opacity-60 saturate-50': disconnected }"
+    :class="{ 'opacity-60 saturate-50': disconnected || entry.hidden }"
   >
     <NuxtLink :to="`/games/${entry.id}`" class="relative block">
       <img
@@ -62,13 +63,21 @@ function onAddToCollection(): void {
         </li>
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
-      <button
-        v-if="manual"
-        class="mt-1.5 rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
-        @click="emit('remove-manual', entry.id)"
-      >
-        Remove from library
-      </button>
+      <div class="mt-1.5 flex flex-wrap gap-1.5">
+        <button
+          v-if="manual"
+          class="rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
+          @click="emit('remove-manual', entry.id)"
+        >
+          Remove from library
+        </button>
+        <button
+          class="rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-teal-400/60 hover:text-teal-300"
+          @click="emit('toggle-hidden', entry.id, !entry.hidden)"
+        >
+          {{ entry.hidden ? 'Unhide' : 'Hide' }}
+        </button>
+      </div>
       <div v-if="manualCollections.length" class="mt-1.5 flex gap-1">
         <select
           v-model="selectedCollectionId"

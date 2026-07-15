@@ -33,6 +33,7 @@ class GameMetaController extends Controller
             'tags.*' => ['string', 'max:40'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'rating' => ['sometimes', 'nullable', 'integer', 'between:1,5'],
+            'hidden' => ['sometimes', 'boolean'],
         ]);
 
         $meta = UserGameMeta::firstOrNew([
