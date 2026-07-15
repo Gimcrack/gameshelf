@@ -66,6 +66,11 @@ class LibraryController extends Controller
 
         unset($validated['collection']);
 
+        // V29: manual membership is explicit, not filter evaluation.
+        if ($custom->type === 'manual') {
+            return ['game_ids' => $custom->games()->pluck('games.id')->all(), ...$validated];
+        }
+
         return [...$custom->filters, ...$validated];
     }
 }

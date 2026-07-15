@@ -108,6 +108,11 @@ class LibraryQuery
             ->when(isset($filters['game_mode']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array($filters['game_mode'], $e['game_modes'], true),
             ))
+            // V29: manual collection membership, synthesized internally by
+            // LibraryController::resolveCollection — never a public param.
+            ->when(isset($filters['game_ids']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array($e['id'], $filters['game_ids'], true),
+            ))
             ->when(isset($filters['playtime_min']), fn (Collection $c) => $c->filter(
                 fn (array $e) => $e['total_playtime_minutes'] !== null
                     && $e['total_playtime_minutes'] >= (int) $filters['playtime_min'],

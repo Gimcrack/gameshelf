@@ -5,13 +5,23 @@ import {
   hasManualEntry,
   type LibraryEntry
 } from '../utils/library'
+import type { Collection } from '../composables/useCollections'
 
-const props = defineProps<{ entry: LibraryEntry }>()
-const emit = defineEmits<{ (e: 'remove-manual', gameId: number): void }>()
+const props = defineProps<{ entry: LibraryEntry; manualCollections: Collection[] }>()
+const emit = defineEmits<{
+  (e: 'remove-manual', gameId: number): void
+  (e: 'add-to-collection', collectionId: number, gameId: number): void
+}>()
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
 const manual = computed(() => hasManualEntry(props.entry))
 const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_minutes))
+const selectedCollectionId = ref<number | null>(null)
+
+function onAddToCollection(): void {
+  if (selectedCollectionId.value === null) return
+  emit('add-to-collection', selectedCollectionId.value, props.entry.id)
+}
 </script>
 
 <template>
@@ -57,6 +67,22 @@ const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_m
       >
         Remove from library
       </button>
+      <div v-if="manualCollections.length" class="mt-1.5 flex gap-1">
+        <select
+          v-model="selectedCollectionId"
+          class="min-w-0 flex-1 rounded border border-slate-700 bg-slate-950 px-1 py-0.5 text-[0.65rem] text-slate-300 focus:border-teal-400 focus:outline-none"
+        >
+          <option :value="null" disabled>Add to collection…</option>
+          <option v-for="c in manualCollections" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+        <button
+          :disabled="selectedCollectionId === null"
+          class="rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-teal-400/60 hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-50"
+          @click="onAddToCollection"
+        >
+          Add
+        </button>
+      </div>
     </div>
   </article>
 </template>

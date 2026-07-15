@@ -5,12 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
- * I.api: a saved /api/library filter preset. System collections (unplayed,
- * abandoned, quick wins) are computed, never stored here.
+ * I.api: type=filter (default) is a saved /api/library filter preset;
+ * type=manual is an explicit add/remove game membership list (V29). System
+ * collections (unplayed, abandoned, quick wins) are computed, never stored
+ * here.
  */
-#[Fillable(['user_id', 'name', 'filters'])]
+#[Fillable(['user_id', 'name', 'type', 'filters'])]
 class Collection extends Model
 {
     /**
@@ -26,5 +29,10 @@ class Collection extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function games(): BelongsToMany
+    {
+        return $this->belongsToMany(Game::class, 'collection_games')->withPivot('added_at');
     }
 }

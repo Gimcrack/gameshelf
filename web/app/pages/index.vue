@@ -3,6 +3,9 @@ import type { LibraryFilters, LibrarySort } from '../utils/library'
 
 const { user, logout, fetchUser } = useAuth()
 const { entries, pending, error, fetchLibrary, removeManual } = useLibrary()
+const { collections, fetchCollections, addGame } = useCollections()
+
+const manualCollections = computed(() => collections.value.filter((c) => c.type === 'manual'))
 
 const isLoggingOut = ref(false)
 
@@ -31,6 +34,7 @@ onMounted(async () => {
     await fetchUser()
   }
   await fetchLibrary(filters.value)
+  await fetchCollections()
 })
 
 watch(filters, () => fetchLibrary(filters.value))
@@ -38,6 +42,10 @@ watch(filters, () => fetchLibrary(filters.value))
 async function onRemoveManual(gameId: number): Promise<void> {
   await removeManual(gameId)
   await fetchLibrary(filters.value)
+}
+
+async function onAddToCollection(collectionId: number, gameId: number): Promise<void> {
+  await addGame(collectionId, gameId)
 }
 
 async function onLogout(): Promise<void> {
@@ -167,7 +175,9 @@ async function onLogout(): Promise<void> {
           v-for="entry in entries"
           :key="entry.id"
           :entry="entry"
+          :manual-collections="manualCollections"
           @remove-manual="onRemoveManual"
+          @add-to-collection="onAddToCollection"
         />
       </div>
     </section>

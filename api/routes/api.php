@@ -45,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/collections', [CollectionController::class, 'index']);
     Route::post('/collections', [CollectionController::class, 'store']);
+    Route::post('/collections/{collection}/games', [CollectionController::class, 'addGame']);
+    Route::delete('/collections/{collection}/games/{game}', [CollectionController::class, 'removeGame']);
 
     Route::get('/stats/backlog', [StatsController::class, 'backlog']);
 
