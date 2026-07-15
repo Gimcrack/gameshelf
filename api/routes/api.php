@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/discover/search', [DiscoverController::class, 'search']);
     Route::get('/discover/browse', [DiscoverController::class, 'browse']);
+    Route::get('/discover/similar', [DiscoverController::class, 'similar']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);

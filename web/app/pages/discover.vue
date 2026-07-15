@@ -3,6 +3,7 @@ import type { ApiError } from '../utils/api'
 import type { DiscoverHit, DiscoverSort } from '../composables/useDiscover'
 
 const { hits, pending, error, search, browse, addToLibrary, addToWishlist } = useDiscover()
+const { rails, fetchSimilar, flagHit: flagSimilarHit } = useSimilarGames()
 
 const q = ref('')
 const genre = ref('')
@@ -17,7 +18,10 @@ function loadBrowse(): Promise<void> {
   return browse({ genre: genre.value, sort: sort.value, page: page.value })
 }
 
-onMounted(() => loadBrowse())
+onMounted(() => {
+  loadBrowse()
+  fetchSimilar()
+})
 
 let debounce: ReturnType<typeof setTimeout> | undefined
 watch(q, () => {
@@ -41,24 +45,30 @@ watch(page, () => {
   if (!searching.value) loadBrowse()
 })
 
-async function run(igdbId: number, action: (id: number) => Promise<void>): Promise<void> {
+async function run(igdbId: number, action: (id: number) => Promise<void>): Promise<boolean> {
   actionError.value = ''
   busyId.value = igdbId
   try {
     await action(igdbId)
+    return true
   } catch (err) {
     actionError.value = (err as ApiError).message
+    return false
   } finally {
     busyId.value = null
   }
 }
 
-function onAddToLibrary(hit: DiscoverHit): Promise<void> {
-  return run(hit.igdb_id, addToLibrary)
+async function onAddToLibrary(hit: DiscoverHit): Promise<void> {
+  if (await run(hit.igdb_id, addToLibrary)) {
+    flagSimilarHit(hit.igdb_id, { in_library: true, in_wishlist: false })
+  }
 }
 
-function onAddToWishlist(hit: DiscoverHit): Promise<void> {
-  return run(hit.igdb_id, addToWishlist)
+async function onAddToWishlist(hit: DiscoverHit): Promise<void> {
+  if (await run(hit.igdb_id, addToWishlist)) {
+    flagSimilarHit(hit.igdb_id, { in_wishlist: true })
+  }
 }
 </script>
 
@@ -126,67 +136,32 @@ function onAddToWishlist(hit: DiscoverHit): Promise<void> {
     </p>
 
     <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
-      <article
+      <DiscoverHitCard
         v-for="hit in hits"
         :key="hit.igdb_id"
-        class="flex flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900"
-      >
-        <img
-          v-if="hit.cover_url"
-          :src="hit.cover_url"
-          :alt="hit.title"
-          loading="lazy"
-          class="block aspect-[3/4] w-full object-cover"
-        />
-        <div
-          v-else
-          class="flex aspect-[3/4] items-center justify-center bg-gradient-to-b from-slate-800 to-slate-900 p-2 text-center text-sm text-slate-400"
-        >
-          {{ hit.title }}
-        </div>
-        <div class="flex flex-1 flex-col px-3 pb-3 pt-2.5">
-          <h3 class="mb-1 text-sm font-semibold leading-snug text-slate-100">{{ hit.title }}</h3>
-          <p class="mb-1.5 text-xs text-slate-500">
-            <span v-if="hit.rating !== null" class="text-teal-300">★ {{ hit.rating }}</span>
-            <span v-if="hit.rating !== null && hit.release_date"> · </span>
-            <span v-if="hit.release_date">{{ hit.release_date.slice(0, 4) }}</span>
-          </p>
-          <p v-if="hit.genres.length" class="mb-2 text-xs text-slate-500">
-            {{ hit.genres.join(', ') }}
-          </p>
-          <div class="mt-auto flex flex-wrap gap-1.5">
-            <span
-              v-if="hit.in_library"
-              class="rounded bg-teal-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"
-            >
-              In library
-            </span>
-            <template v-else>
-              <button
-                :disabled="busyId === hit.igdb_id"
-                class="rounded bg-teal-500 px-2 py-1 text-xs font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-50"
-                @click="onAddToLibrary(hit)"
-              >
-                Add to library
-              </button>
-              <span
-                v-if="hit.in_wishlist"
-                class="rounded bg-teal-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"
-              >
-                Wishlisted
-              </span>
-              <button
-                v-else
-                :disabled="busyId === hit.igdb_id"
-                class="rounded border border-slate-700 px-2 py-1 text-xs text-slate-400 transition hover:border-teal-400/60 hover:text-teal-300 disabled:opacity-50"
-                @click="onAddToWishlist(hit)"
-              >
-                Wishlist
-              </button>
-            </template>
-          </div>
-        </div>
-      </article>
+        :hit="hit"
+        :busy="busyId === hit.igdb_id"
+        @add-to-library="onAddToLibrary"
+        @add-to-wishlist="onAddToWishlist"
+      />
     </div>
+
+    <section v-if="!searching && rails.length" class="mt-10 space-y-8">
+      <div v-for="rail in rails" :key="rail.seed.id">
+        <h2 class="mb-3 text-sm font-semibold text-slate-300">
+          Because you played <span class="text-teal-400">{{ rail.seed.title }}</span>
+        </h2>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
+          <DiscoverHitCard
+            v-for="hit in rail.similar"
+            :key="hit.igdb_id"
+            :hit="hit"
+            :busy="busyId === hit.igdb_id"
+            @add-to-library="onAddToLibrary"
+            @add-to-wishlist="onAddToWishlist"
+          />
+        </div>
+      </div>
+    </section>
   </main>
 </template>

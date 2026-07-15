@@ -3,7 +3,6 @@
 namespace App\Services\Discover;
 
 use App\Services\Igdb\IgdbClient;
-use App\Services\Igdb\IgdbImageUrl;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -77,30 +76,11 @@ class DiscoverCatalog
     }
 
     /**
-     * IGDB records → §I hit shape, sans per-user flags (V20).
-     *
      * @param  list<array<string, mixed>>  $records
      * @return list<array<string, mixed>>
      */
     private function hits(array $records): array
     {
-        return array_values(array_map(
-            fn (array $record) => [
-                'igdb_id' => (int) $record['id'],
-                'title' => $record['name'] ?? '',
-                'cover_url' => IgdbImageUrl::resize($record['cover']['url'] ?? null),
-                'genres' => array_map(
-                    fn (array $genre) => $genre['name'],
-                    $record['genres'] ?? [],
-                ),
-                'release_date' => isset($record['first_release_date'])
-                    ? date('Y-m-d', (int) $record['first_release_date'])
-                    : null,
-                'rating' => isset($record['total_rating'])
-                    ? (int) round($record['total_rating'])
-                    : null,
-            ],
-            $records,
-        ));
+        return IgdbHitMapper::map($records);
     }
 }

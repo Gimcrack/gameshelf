@@ -18,6 +18,11 @@ class IgdbClient
 
     private const DISCOVER_FIELDS = 'name,cover.url,genres.name,first_release_date,total_rating';
 
+    // T16: expand similar_games sub-object in one call — no second round
+    // trip per hit, single throttled request per seed (V4 caches the rest).
+    private const SIMILAR_FIELDS = 'similar_games.name,similar_games.cover.url,'
+        .'similar_games.genres.name,similar_games.first_release_date,similar_games.total_rating';
+
     // V30: themes/keywords/game_modes ride along on the same request that
     // already fetches genres — no extra IGDB call, no throttle/cache change.
     private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,first_release_date';
@@ -147,6 +152,36 @@ class IgdbClient
         $results = $response->json();
 
         return is_array($results) ? $results : [];
+    }
+
+    /**
+     * IGDB `similar_games` for one seed game, in discover hit record shape
+     * (pre-mapping). Empty when IGDB has no similar-games data for the id.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function similarGames(int $igdbId): array
+    {
+        $this->throttle();
+
+        $query = sprintf(
+            'fields %s; where id = %d; limit 1;',
+            self::SIMILAR_FIELDS,
+            $igdbId,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $records = $response->json('0.similar_games');
+
+        return is_array($records) ? $records : [];
     }
 
     /**
