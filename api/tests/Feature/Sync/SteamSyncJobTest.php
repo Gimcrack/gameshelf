@@ -175,6 +175,53 @@ class SteamSyncJobTest extends TestCase
         });
     }
 
+    /**
+     * V24: sync prunes rows absent from the fresh response — covers legacy
+     * free-game noise (pre-V23) and games actually removed from the account.
+     * Snapshot history cascades with the deleted row.
+     */
+    public function test_resync_removes_games_absent_from_fresh_response(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::sequence()
+                ->push([
+                    'response' => [
+                        'game_count' => 2,
+                        'games' => [
+                            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                            ['appid' => 1500, 'name' => 'Free Noise Game', 'playtime_forever' => 0],
+                        ],
+                    ],
+                ])
+                // Second sync: Steam no longer reports the noise appid.
+                ->push([
+                    'response' => [
+                        'game_count' => 1,
+                        'games' => [
+                            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1250],
+                        ],
+                    ],
+                ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+        $this->runSync($connection);
+
+        $this->assertDatabaseCount('owned_games', 2);
+        $noiseOwnedGame = OwnedGame::where('platform_game_id', '1500')->first();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseCount('owned_games', 1);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620']);
+        $this->assertDatabaseMissing('owned_games', ['platform_game_id' => '1500']);
+        $this->assertDatabaseMissing('playtime_snapshots', ['owned_game_id' => $noiseOwnedGame->id]);
+    }
+
     public function test_playtime_null_when_steam_omits_it(): void
     {
         $this->fakeOwnedGames([

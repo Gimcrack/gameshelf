@@ -37,6 +37,17 @@ class SteamSyncer
             $this->ingestGame($connection, $steamGame, $capturedAt);
         }
 
+        // V24: sync reflects Steam's current state, not just accretes it —
+        // rows for appids absent from this response (removed from the
+        // account, or legacy noise from the pre-V23 free-games bug) are
+        // pruned. Snapshot history cascades with the row (V16 data is only
+        // meaningful for games still in the library).
+        $currentAppIds = array_map(fn (array $g) => (string) $g['appid'], $games);
+
+        $connection->ownedGames()
+            ->whereNotIn('platform_game_id', $currentAppIds)
+            ->delete();
+
         $connection->update([
             'status' => ConnectionStatus::Ok,
             'last_synced_at' => $capturedAt,
