@@ -153,6 +153,28 @@ class SteamSyncJobTest extends TestCase
         $this->assertSame('error', $connection->fresh()->status->value);
     }
 
+    /**
+     * V23: include_played_free_games ⊥ sent — Steam's default excludes
+     * F2P titles the account was auto-granted but never chose to add.
+     */
+    public function test_get_owned_games_omits_free_games_flag(): void
+    {
+        $this->fakeOwnedGames([
+            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if (! str_contains($request->url(), 'GetOwnedGames')) {
+                return true;
+            }
+
+            return ! array_key_exists('include_played_free_games', $request->data());
+        });
+    }
+
     public function test_playtime_null_when_steam_omits_it(): void
     {
         $this->fakeOwnedGames([

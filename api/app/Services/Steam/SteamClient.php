@@ -53,7 +53,10 @@ class SteamClient
             'key' => $this->apiKey,
             'steamid' => $steamId,
             'include_appinfo' => 1,
-            'include_played_free_games' => 1,
+            // V23: omit include_played_free_games — Steam's own docs note
+            // free games are excluded by default "since technically anyone
+            // can own them"; setting this flooded libraries with unwanted
+            // F2P titles the user never chose to add.
         ]);
 
         if ($response->failed()) {

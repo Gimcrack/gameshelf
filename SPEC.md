@@ -95,13 +95,14 @@ V19: manual adds → per-user synthetic `manual` platform_connection (no tokens,
 V20: ∀ discovery responses → `in_library` computed vs caller's owned igdb_ids. ⊥ stale per-user cache: IGDB payloads cacheable globally, ownership overlay per-request. `in_wishlist` same rule (T17).
 V21: wishlist ∩ library = ∅. Add-to-wishlist of owned game → 200 no-op w/ in_library flag. Promote to library → wishlist row removed. Wishlist ⊥ counted in library, stats, backlog.
 V22: wishlist sync idempotent + asymmetric. Remote removal propagates: item previously platform-present, now absent from pull → local wish deleted (unless other platform still lists | tombstone pending — then flag clears only). ⊥ re-push after remote removal (thrash). Pull steam+gog → upsert (⊥ dups per unique key); local delete → tombstone (`suppressed_at`) → ⊥ re-import while platform still lists it, gog_present rows also pushed remove to GOG; local adds push to GOG only when external mapping resolves; Steam ⊥ pushed ever (no write API). Remote GOG write ≤ 1 per state change. Sync ⊥ run inline (V8 queue).
+V23: Steam sync ⊥ pass `include_played_free_games` → matches Steam default, excludes F2P titles "anyone technically owns" (not real library intent). Manual F2P add (T14) unaffected.
 
 ## §T tasks
 
 id|status|task|cites
 T1|x|Laravel API skeleton + Sanctum auth + email/password accounts|V3
 T2|x|Nuxt skeleton + auth flow → Sanctum|V3
-T3|x|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshots|V2,V5,V8,V9,V10,V15,V16,I.steam
+T3|x|Steam connect (vanity resolve) + queued sync job + raw ingestion + snapshots|V2,V5,V8,V9,V10,V15,V16,V23,I.steam
 T4|x|canonical game matching vs IGDB (Twitch auth), Redis cache, provisional fallback|V4,V7,V11,I.igdb
 T5|x|unified library UI: grid, filters, sort, disconnect badges|V1,V12,V13,I.api
 T6|x|GOG connect + token refresh + sync — validates multi-platform dedupe|V1,V2,V8,V10,V14,I.gog
@@ -125,3 +126,4 @@ T20|x|wishlist platform sync: queued job — pull steam (read-only, appdetails t
 id|date|cause|fix
 B1|2026-07-13|browser "CORS" error local = no server bound to apiBase http://localhost:8000; Herd site `gameshelf` pointed at `web/.output/public` ⊥ `api/public`; Laravel CORS defaults fine (ACAO *)|Herd relink → api/, web/.env apiBase, §C.dev-topology
 B2|2026-07-14|T20 dev: V22 unspecified for remote removal — pull-absent + gog_present cleared flag → push re-added → remote write thrash. Caught by idempotency test pre-commit|V22 extended
+B3|2026-07-14|SteamClient::getOwnedGames set `include_played_free_games=1` → Steam auto-included F2P titles user never chose ("anyone technically owns" per Steam docs)|V23
