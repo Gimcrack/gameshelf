@@ -32,6 +32,7 @@ Source: `design-doc.md` v0.1.
 - Auth: own accounts — email/password + Sanctum tokens. Steam OpenID ⊥ identity (connection only).
 - Hosting: Laravel Forge + single VPS (API, queue, Redis, DB). Nuxt SPA static via same box | CDN.
 - Nuxt mode: SPA (`ssr: false`). All views behind auth, no SEO need. Holds in Nuxt 4 — upgrade ⊥ drop `ssr: false`.
+- FE facet filter > 5 options → searchable multi-select combobox (`@headlessui/vue` Combobox), ≤ 5 → checkbox list. Added amend 2026-07-15 → T33.
 - Local dev topology: API via Herd → `http://gameshelf.test` (Sites symlink → `api/`), FE `nuxt dev` :3000, `web/.env` NUXT_PUBLIC_API_BASE=http://gameshelf.test. API unreachable → browser reports CORS-shaped error ∴ check server up before touching CORS config. Laravel CORS = framework defaults (ACAO *), no cors.php published.
 
 ## §I interfaces
@@ -125,6 +126,7 @@ V36: `GET /api/library/facets` (T28) returns the full library vocabulary, unfilt
 V37: IGDB `age_ratings` real shape (live-verified, B7) — flat `category`+`rating` fields T27 assumed ⊥ exist (IGDB overhaul, pre-2026); actual: `organization` int (→ `age_rating_organizations`, ESRB=1) + `rating_category` ref, nested-expandable to `.rating` (human label string directly — "M","E10+" etc, ⊥ local numeric id→label map). Unknown/renamed fields IGDB silently drops (bare `{id}` row, no error) rather than failing the request — a wrong field name here fails silent, never loud. Query `age_ratings.organization,age_ratings.rating_category.rating` — still 1 request, V4 throttle/cache unaffected.
 V38: bulk "sync all IGDB" (T31) queued (extends V8's rationale — bulk work off request cycle — beyond connection-sync scope). Throttled per-user ≥5 min gap, Redis cache key (mirrors connection sync-now throttle, §C), ⊥ new DB column. Runs `GameMatcher::matchConnection` per caller connection (provisional games, V26 tolerance already covers per-game failure) + `GameIgdbRefresh::refresh` per already-matched game — 1 game's failure ⊥ abort the batch, mirrors V26. Fan-out per V39 (B8) — was single monolithic job, timed out.
 V39: bulk IGDB work fans out — orchestrator job ⊥ makes IGDB calls itself, only dispatches child jobs: 1 per connection match unit + 1 per game refresh. Child job runtime bounded (≤ few IGDB calls). Rate limit enforced @ queue layer (job middleware, Redis throttle, shares ≤ 4 req/s budget V4/§C discovery) → over-budget child released back to queue w/ delay, ⊥ sleep-blocking worker. Child failure isolated per V26/V38 — 1 game fail ⊥ touch siblings. Retry mid-batch resumes remaining children, ⊥ restart whole library.
+V40: filter sidebar 1 control per concept — game_modes checkbox list ⊥ shows values duplicated by dedicated bool filters ("Multiplayer","Co-operative","Split screen"); V32 bool flags = the multiplayer/coop controls. ∀ new facet ! check overlap vs dedicated filters before rendering.
 
 ## §T tasks
 
@@ -161,6 +163,8 @@ T29|x|manual "fix match": POST /api/library/:game_id/rematch, query-override can
 T30|x|manual per-game IGDB refresh: POST /api/library/:game_id/refresh-igdb; FE "fetch" button on detail page (T24) to re-sync one game's IGDB data on demand|V35,I.api,I.igdb
 T31|x|"sync all IGDB" bulk refresh: POST /api/library/sync-igdb → 202 dispatch job (throttled per-user ≥5 min), job runs GameMatcher::matchConnection per caller connection (provisional games) + GameIgdbRefresh::refresh per already-matched game (best-effort, ⊥ abort batch on single failure); FE button on /profile|V38,I.api
 T32|x|fix T31 timeout: SyncLibraryIgdb → fan-out orchestrator, new per-game RefreshGameIgdb job + per-connection match job, RateLimited/Redis-throttle middleware on IGDB budget|V38,V39,I.api
+T33|x|facet combobox: add `@headlessui/vue`, FacetCombobox component (multi-select, searchable), LibraryFilterSidebar renders combobox when facet > 5 options else checkbox list; re-enable commented-out keywords facet via combobox|§C.facet-combobox,I.api
+T34|.|dedupe multiplayer/co-op options: exclude game_modes values duplicating V32 bool filters from sidebar game-mode list|V40,V32
 
 ## §B bugs
 
@@ -173,3 +177,4 @@ B5|2026-07-15|GameMatcher::match() ⊥ try/catch around searchGame — early syn
 B6|2026-07-15|GameMatcher searched raw Steam title only — titles w/ ®™© (LEGO® Worlds, Titanfall® 2) never matched IGDB's glyph-free canonical titles, stayed provisional forever (no retry differs by title, cache MISS permanent)|V27
 B7|2026-07-15|IgdbClient::CANONICAL_FIELDS queried `age_ratings.category,age_ratings.rating` — IGDB overhauled this schema, fields renamed to `organization`+`rating_category` (nested); old names silently dropped by IGDB (no error) → `esrb_rating` never populated despite T27's own "? confirm live @ build" flag never actually being resolved. Live-verified via age_ratings/age_rating_organizations/age_rating_categories endpoints|V37
 B8|2026-07-15|SyncLibraryIgdb monolithic — 1 job serial-loops whole library, 2 IGDB calls/game (getGame+timeToBeat) @ ≤4 req/s → 770-game library ≈ 6+ min, exceeds queue timeout (retry_after 90s) → killed mid-batch, retry restarts from zero|V39
+B9|2026-07-15|LibraryFilterSidebar renders IGDB game_modes facet values ("Multiplayer","Co-operative","Split screen") alongside dedicated V32 bool filters (Multiplayer/Co-op/Local multiplayer/Local co-op) → same concept appears twice in sidebar. T22 facet × T27 flags overlap, ⊥ data bug|V40

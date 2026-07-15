@@ -22,46 +22,6 @@ const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'veri
 
 <template>
   <aside class="flex w-56 shrink-0 flex-col gap-5 text-sm text-slate-400">
-    <fieldset v-if="facets.platforms.length" class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Platform</legend>
-      <label v-for="p in facets.platforms" :key="p" class="flex items-center gap-2 pb-0.5">
-        <input v-model="platforms" type="checkbox" :value="p" class="accent-teal-500" />
-        {{ p }}
-      </label>
-    </fieldset>
-
-    <fieldset v-if="facets.genres.length" class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Genre</legend>
-      <label v-for="g in facets.genres" :key="g" class="flex items-center gap-2 pb-0.5">
-        <input v-model="genres" type="checkbox" :value="g" class="accent-teal-500" />
-        {{ g }}
-      </label>
-    </fieldset>
-
-    <fieldset v-if="facets.themes.length" class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Theme</legend>
-      <label v-for="t in facets.themes" :key="t" class="flex items-center gap-2 pb-0.5">
-        <input v-model="themes" type="checkbox" :value="t" class="accent-teal-500" />
-        {{ t }}
-      </label>
-    </fieldset>
-
-    <fieldset v-if="facets.keywords.length" class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Keyword</legend>
-      <label v-for="k in facets.keywords" :key="k" class="flex items-center gap-2 pb-0.5">
-        <input v-model="keywords" type="checkbox" :value="k" class="accent-teal-500" />
-        {{ k }}
-      </label>
-    </fieldset>
-
-    <fieldset v-if="facets.game_modes.length" class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Game mode</legend>
-      <label v-for="m in facets.game_modes" :key="m" class="flex items-center gap-2 pb-0.5">
-        <input v-model="gameModes" type="checkbox" :value="m" class="accent-teal-500" />
-        {{ m }}
-      </label>
-    </fieldset>
-
     <label class="flex flex-col gap-1">
       ESRB
       <select
@@ -77,6 +37,12 @@ const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'veri
         <option value="AO">AO</option>
       </select>
     </label>
+
+    <FacetFilter v-model="platforms" label="Platform" :options="facets.platforms" />
+    <FacetFilter v-model="genres" label="Genre" :options="facets.genres" />
+    <FacetFilter v-model="themes" label="Theme" :options="facets.themes" />
+    <FacetFilter v-model="keywords" label="Keyword" :options="facets.keywords" />
+    <FacetFilter v-model="gameModes" label="Game mode" :options="facets.game_modes" />
 
     <fieldset class="flex flex-col gap-1">
       <legend class="mb-1 text-slate-300">Steam Deck</legend>
