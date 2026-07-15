@@ -46,18 +46,46 @@ class SteamClient
      * Returns null for private profiles — Steam signals privacy with an
      * empty response object rather than an error status (V15).
      *
+     * V41: fetched twice — base (Steam's default excludes F2P "anyone
+     * technically owns", B3) + extended with include_played_free_games=1.
+     * Appids only in the extended set are F2P; each entry carries a
+     * `free_to_play` bool so the syncer can apply the playtime > 0 guard.
+     *
      * @return list<array<string, mixed>>|null
      */
     public function getOwnedGames(string $steamId): ?array
+    {
+        $base = $this->fetchOwnedGames($steamId, includePlayedFreeGames: false);
+
+        if ($base === null) {
+            // V15: private profile — no second call, short-circuit upstream.
+            return null;
+        }
+
+        $extended = $this->fetchOwnedGames($steamId, includePlayedFreeGames: true);
+
+        $baseAppIds = array_flip(array_map(fn (array $g) => (int) $g['appid'], $base));
+        $freeGames = array_filter(
+            $extended ?? [],
+            fn (array $g) => ! isset($baseAppIds[(int) $g['appid']]),
+        );
+
+        return [
+            ...array_map(fn (array $g) => [...$g, 'free_to_play' => false], $base),
+            ...array_map(fn (array $g) => [...$g, 'free_to_play' => true], array_values($freeGames)),
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>|null
+     */
+    private function fetchOwnedGames(string $steamId, bool $includePlayedFreeGames): ?array
     {
         $response = Http::get(self::BASE_URL.'/IPlayerService/GetOwnedGames/v1/', [
             'key' => $this->apiKey,
             'steamid' => $steamId,
             'include_appinfo' => 1,
-            // V23: omit include_played_free_games — Steam's own docs note
-            // free games are excluded by default "since technically anyone
-            // can own them"; setting this flooded libraries with unwanted
-            // F2P titles the user never chose to add.
+            ...($includePlayedFreeGames ? ['include_played_free_games' => 1] : []),
         ]);
 
         if ($response->failed()) {

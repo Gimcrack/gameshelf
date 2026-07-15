@@ -16,13 +16,24 @@ class SteamSyncJobTest extends TestCase
 
     private function fakeOwnedGames(array $games): void
     {
+        // Same list for base and extended fetch — diff = ∅, nothing F2P.
+        $this->fakeOwnedGamesSplit($games, $games);
+    }
+
+    /**
+     * V41: GetOwnedGames is fetched twice per sync — the callable serves the
+     * extended list only when include_played_free_games is present.
+     */
+    private function fakeOwnedGamesSplit(array $base, array $extended): void
+    {
         Http::fake([
-            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
-                'response' => [
-                    'game_count' => count($games),
-                    'games' => $games,
-                ],
-            ]),
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => function (\Illuminate\Http\Client\Request $request) use ($base, $extended) {
+                $games = array_key_exists('include_played_free_games', $request->data()) ? $extended : $base;
+
+                return Http::response([
+                    'response' => ['game_count' => count($games), 'games' => $games],
+                ]);
+            },
             // IGDB enrichment runs after ingestion; these tests exercise raw
             // ingestion only, so every match is a miss.
             'id.twitch.tv/oauth2/token*' => Http::response([
@@ -110,17 +121,20 @@ class SteamSyncJobTest extends TestCase
     public function test_private_profile_sets_error_state_and_keeps_games(): void
     {
         // Steam returns an empty response object for private profiles.
-        // Sequence: first sync sees games, second sees a newly-private profile.
+        // Sequence: first sync sees games (V41: base + extended = 2 calls),
+        // second sees a newly-private profile (base short-circuits, 1 call).
+        $gamesResponse = [
+            'response' => [
+                'game_count' => 1,
+                'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ],
+            ],
+        ];
         Http::fake([
             'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::sequence()
-                ->push([
-                    'response' => [
-                        'game_count' => 1,
-                        'games' => [
-                            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
-                        ],
-                    ],
-                ])
+                ->push($gamesResponse)
+                ->push($gamesResponse)
                 ->push(['response' => (object) []]),
             'id.twitch.tv/oauth2/token*' => Http::response([
                 'access_token' => 'twitch-app-token',
@@ -154,10 +168,10 @@ class SteamSyncJobTest extends TestCase
     }
 
     /**
-     * V23: include_played_free_games ⊥ sent — Steam's default excludes
-     * F2P titles the account was auto-granted but never chose to add.
+     * V41 (supersedes V23): GetOwnedGames fetched twice — base without the
+     * flag, extended with include_played_free_games=1.
      */
-    public function test_get_owned_games_omits_free_games_flag(): void
+    public function test_get_owned_games_double_fetches_with_and_without_free_games_flag(): void
     {
         $this->fakeOwnedGames([
             ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
@@ -166,13 +180,91 @@ class SteamSyncJobTest extends TestCase
 
         $this->runSync($connection);
 
-        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
-            if (! str_contains($request->url(), 'GetOwnedGames')) {
-                return true;
-            }
+        $ownedGamesCalls = Http::recorded(
+            fn (\Illuminate\Http\Client\Request $r) => str_contains($r->url(), 'GetOwnedGames'),
+        );
 
-            return ! array_key_exists('include_played_free_games', $request->data());
-        });
+        $this->assertCount(2, $ownedGamesCalls);
+        [$base, $extended] = $ownedGamesCalls->map(fn (array $pair) => $pair[0]->data())->all();
+        $this->assertArrayNotHasKey('include_played_free_games', $base);
+        $this->assertEquals(1, $extended['include_played_free_games'] ?? null);
+    }
+
+    /**
+     * V41: F2P (extended-only appid) with playtime > 0 is ingested and
+     * flagged; base (paid) rows stay free_to_play=false.
+     */
+    public function test_played_f2p_ingested_with_flag(): void
+    {
+        $portal = ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200];
+        $dota = ['appid' => 570, 'name' => 'Dota 2', 'playtime_forever' => 300];
+        $this->fakeOwnedGamesSplit([$portal], [$portal, $dota]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseCount('owned_games', 2);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '570', 'free_to_play' => true]);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620', 'free_to_play' => false]);
+    }
+
+    /**
+     * V41: zero-playtime F2P is B3 noise — never ingested.
+     */
+    public function test_zero_playtime_f2p_not_ingested(): void
+    {
+        $portal = ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200];
+        $noise = ['appid' => 1500, 'name' => 'Free Noise Game', 'playtime_forever' => 0];
+        $this->fakeOwnedGamesSplit([$portal], [$portal, $noise]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseCount('owned_games', 1);
+        $this->assertDatabaseMissing('owned_games', ['platform_game_id' => '1500']);
+    }
+
+    /**
+     * V41: the playtime > 0 guard is F2P-only — paid rows with zero or
+     * unknown playtime ingest as before.
+     */
+    public function test_paid_game_zero_or_null_playtime_still_ingested(): void
+    {
+        $this->fakeOwnedGames([
+            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 0],
+            ['appid' => 400, 'name' => 'Portal'],
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseCount('owned_games', 2);
+    }
+
+    /**
+     * V41+V24: fresh-set = base ∪ played-F2P — a legacy zero-playtime F2P
+     * row (pre-V23 noise) falls out of the fresh-set and gets pruned.
+     */
+    public function test_legacy_zero_playtime_f2p_row_pruned_on_resync(): void
+    {
+        $portal = ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200];
+        $noise = ['appid' => 1500, 'name' => 'Free Noise Game', 'playtime_forever' => 0];
+        $this->fakeOwnedGamesSplit([$portal], [$portal, $noise]);
+        $connection = $this->steamConnection();
+
+        // Legacy row for the noise appid, as the pre-V23 bug left behind.
+        OwnedGame::create([
+            'user_id' => $connection->user_id,
+            'platform_connection_id' => $connection->id,
+            'game_id' => \App\Models\Game::create(['title' => 'Free Noise Game'])->id,
+            'platform_game_id' => '1500',
+            'added_at' => now(),
+        ]);
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseMissing('owned_games', ['platform_game_id' => '1500']);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620']);
     }
 
     /**
@@ -182,26 +274,31 @@ class SteamSyncJobTest extends TestCase
      */
     public function test_resync_removes_games_absent_from_fresh_response(): void
     {
+        // V41: 2 GetOwnedGames calls per sync (base + extended).
+        $firstSync = [
+            'response' => [
+                'game_count' => 2,
+                'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                    ['appid' => 1500, 'name' => 'Free Noise Game', 'playtime_forever' => 0],
+                ],
+            ],
+        ];
+        // Second sync: Steam no longer reports the noise appid.
+        $secondSync = [
+            'response' => [
+                'game_count' => 1,
+                'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1250],
+                ],
+            ],
+        ];
         Http::fake([
             'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::sequence()
-                ->push([
-                    'response' => [
-                        'game_count' => 2,
-                        'games' => [
-                            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
-                            ['appid' => 1500, 'name' => 'Free Noise Game', 'playtime_forever' => 0],
-                        ],
-                    ],
-                ])
-                // Second sync: Steam no longer reports the noise appid.
-                ->push([
-                    'response' => [
-                        'game_count' => 1,
-                        'games' => [
-                            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1250],
-                        ],
-                    ],
-                ]),
+                ->push($firstSync)
+                ->push($firstSync)
+                ->push($secondSync)
+                ->push($secondSync),
             'id.twitch.tv/oauth2/token*' => Http::response([
                 'access_token' => 'twitch-app-token',
                 'expires_in' => 3600,

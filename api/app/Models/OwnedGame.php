@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'install_status',
     'added_at',
     'deck_status',
+    'free_to_play',
 ])]
 class OwnedGame extends Model
 {
@@ -30,6 +31,7 @@ class OwnedGame extends Model
             'last_played_at' => 'datetime',
             'added_at' => 'datetime',
             'deck_status' => DeckStatus::class,
+            'free_to_play' => 'boolean',
         ];
     }
 

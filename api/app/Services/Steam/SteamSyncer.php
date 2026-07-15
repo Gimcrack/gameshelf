@@ -31,6 +31,14 @@ class SteamSyncer
             return;
         }
 
+        // V41: F2P ingested iff playtime > 0 — zero-playtime F2P is B3
+        // noise, never ingested. The filtered list also defines the V24
+        // fresh-set below, so legacy zero-playtime F2P rows get pruned.
+        $games = array_values(array_filter(
+            $games,
+            fn (array $g) => ! ($g['free_to_play'] ?? false) || ($g['playtime_forever'] ?? 0) > 0,
+        ));
+
         $capturedAt = Date::now();
 
         foreach ($games as $steamGame) {
@@ -82,6 +90,8 @@ class SteamSyncer
             'playtime_minutes' => $playtime,
             'last_played_at' => $lastPlayed,
             'added_at' => $existing?->added_at ?? $capturedAt,
+            // V41: true = appid appeared only in the extended fetch.
+            'free_to_play' => $steamGame['free_to_play'] ?? false,
         ];
 
         // V31: best-effort, refetched every sync. A transient failure omits
