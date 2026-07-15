@@ -7,6 +7,7 @@ use App\Services\Discover\DiscoverCatalog;
 use App\Services\Discover\FranchiseGaps;
 use App\Services\Discover\OwnershipOverlay;
 use App\Services\Discover\SimilarGames;
+use App\Services\Discover\UpcomingReleases;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,7 @@ class DiscoverController extends Controller
         private readonly OwnershipOverlay $overlay,
         private readonly SimilarGames $similarGames,
         private readonly FranchiseGaps $franchiseGaps,
+        private readonly UpcomingReleases $upcomingReleases,
     ) {
     }
 
@@ -62,5 +64,14 @@ class DiscoverController extends Controller
     public function franchises(Request $request): JsonResponse
     {
         return response()->json($this->franchiseGaps->forUser($request->user()));
+    }
+
+    /**
+     * I.api T19: upcoming-releases rail, filtered to the caller's top
+     * owned genres.
+     */
+    public function upcoming(Request $request): JsonResponse
+    {
+        return response()->json($this->upcomingReleases->forUser($request->user()));
     }
 }

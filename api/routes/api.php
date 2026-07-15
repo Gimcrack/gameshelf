@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/discover/browse', [DiscoverController::class, 'browse']);
     Route::get('/discover/similar', [DiscoverController::class, 'similar']);
     Route::get('/discover/franchises', [DiscoverController::class, 'franchises']);
+    Route::get('/discover/upcoming', [DiscoverController::class, 'upcoming']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist', [WishlistController::class, 'store']);

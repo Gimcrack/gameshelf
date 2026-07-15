@@ -14,10 +14,10 @@ class DiscoverCatalog
 {
     private const RESULTS_TTL_HOURS = 6;
 
-    private const GENRES_TTL_DAYS = 7;
-
-    public function __construct(private readonly IgdbClient $client)
-    {
+    public function __construct(
+        private readonly IgdbClient $client,
+        private readonly IgdbGenreCatalog $genreCatalog,
+    ) {
     }
 
     /**
@@ -44,7 +44,7 @@ class DiscoverCatalog
         $genreId = null;
 
         if ($genreName !== null && trim($genreName) !== '') {
-            $genreId = $this->genreId($genreName);
+            $genreId = $this->genreCatalog->id($genreName);
 
             if ($genreId === null) {
                 return [];
@@ -56,23 +56,6 @@ class DiscoverCatalog
             now()->addHours(self::RESULTS_TTL_HOURS),
             fn () => $this->hits($this->client->browseGames($genreId, $sort, $page)),
         );
-    }
-
-    private function genreId(string $name): ?int
-    {
-        $genres = Cache::remember(
-            'igdb-discover:genres',
-            now()->addDays(self::GENRES_TTL_DAYS),
-            fn () => $this->client->genres(),
-        );
-
-        foreach ($genres as $genre) {
-            if (strcasecmp($genre['name'] ?? '', trim($name)) === 0) {
-                return (int) $genre['id'];
-            }
-        }
-
-        return null;
     }
 
     /**

@@ -5,6 +5,7 @@ import type { DiscoverHit, DiscoverSort } from '../composables/useDiscover'
 const { hits, pending, error, search, browse, addToLibrary, addToWishlist } = useDiscover()
 const { rails, fetchSimilar, flagHit: flagSimilarHit } = useSimilarGames()
 const { franchises, fetchFranchises, flagHit: flagFranchiseHit } = useFranchiseGaps()
+const { hits: upcoming, fetchUpcoming, flagHit: flagUpcomingHit } = useUpcomingReleases()
 
 const q = ref('')
 const genre = ref('')
@@ -23,6 +24,7 @@ onMounted(() => {
   loadBrowse()
   fetchSimilar()
   fetchFranchises()
+  fetchUpcoming()
 })
 
 let debounce: ReturnType<typeof setTimeout> | undefined
@@ -65,6 +67,7 @@ async function onAddToLibrary(hit: DiscoverHit): Promise<void> {
   if (await run(hit.igdb_id, addToLibrary)) {
     flagSimilarHit(hit.igdb_id, { in_library: true, in_wishlist: false })
     flagFranchiseHit(hit.igdb_id, { in_library: true, in_wishlist: false })
+    flagUpcomingHit(hit.igdb_id, { in_library: true, in_wishlist: false })
   }
 }
 
@@ -72,6 +75,7 @@ async function onAddToWishlist(hit: DiscoverHit): Promise<void> {
   if (await run(hit.igdb_id, addToWishlist)) {
     flagSimilarHit(hit.igdb_id, { in_wishlist: true })
     flagFranchiseHit(hit.igdb_id, { in_wishlist: true })
+    flagUpcomingHit(hit.igdb_id, { in_wishlist: true })
   }
 }
 </script>
@@ -186,6 +190,22 @@ async function onAddToWishlist(hit: DiscoverHit): Promise<void> {
             @add-to-wishlist="onAddToWishlist"
           />
         </div>
+      </div>
+    </section>
+
+    <section v-if="!searching && upcoming.length" class="mt-10">
+      <h2 class="mb-3 text-sm font-semibold text-slate-300">
+        <span class="text-teal-400">Upcoming</span> releases
+      </h2>
+      <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
+        <DiscoverHitCard
+          v-for="hit in upcoming"
+          :key="hit.igdb_id"
+          :hit="hit"
+          :busy="busyId === hit.igdb_id"
+          @add-to-library="onAddToLibrary"
+          @add-to-wishlist="onAddToWishlist"
+        />
       </div>
     </section>
   </main>

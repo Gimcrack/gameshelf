@@ -29,6 +29,8 @@ class IgdbClient
     private const FRANCHISE_FIELDS = 'franchises.name,franchises.games.name,franchises.games.cover.url,'
         .'franchises.games.genres.name,franchises.games.first_release_date,franchises.games.total_rating';
 
+    private const UPCOMING_FIELDS = 'name,cover.url,genres.name,first_release_date,total_rating';
+
     // V30: themes/keywords/game_modes ride along on the same request that
     // already fetches genres — no extra IGDB call, no throttle/cache change.
     private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,first_release_date';
@@ -218,6 +220,49 @@ class IgdbClient
         $franchises = $response->json('0.franchises');
 
         return is_array($franchises) ? $franchises : [];
+    }
+
+    /**
+     * T19: catalogue games releasing within a date window, optionally
+     * restricted to a set of genre ids. `genres = (a,b,c)` is IGDB's
+     * apicalypse "any of" syntax for array reference fields — matches a
+     * game whose genres intersect the given ids, not an exact-set match.
+     *
+     * @param  list<int>  $genreIds
+     * @return list<array<string, mixed>>
+     */
+    public function upcomingGames(array $genreIds, int $fromTimestamp, int $toTimestamp, int $limit = 20): array
+    {
+        $this->throttle();
+
+        $where = [
+            "first_release_date >= {$fromTimestamp}",
+            "first_release_date <= {$toTimestamp}",
+        ];
+
+        if ($genreIds !== []) {
+            $where[] = 'genres = ('.implode(',', $genreIds).')';
+        }
+
+        $query = sprintf(
+            'fields %s; where %s; sort first_release_date asc; limit %d;',
+            self::UPCOMING_FIELDS,
+            implode(' & ', $where),
+            $limit,
+        );
+
+        $response = Http::withHeaders([
+            'Client-ID' => $this->clientId,
+            'Authorization' => 'Bearer '.$this->auth->token(),
+        ])->withBody($query, 'text/plain')->post(self::GAMES_URL);
+
+        if ($response->failed()) {
+            throw new RuntimeException('IGDB games request failed: '.$response->status());
+        }
+
+        $results = $response->json();
+
+        return is_array($results) ? $results : [];
     }
 
     /**
