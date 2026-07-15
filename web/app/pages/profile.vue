@@ -25,6 +25,7 @@ onMounted(async () => {
     <div class="space-y-6">
       <ProfileAccount />
       <ProfileConnections />
+      <ProfileIgdbSync />
       <ProfileApiKeys />
     </div>
   </main>

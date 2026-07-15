@@ -9,6 +9,7 @@ use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\IgdbRefreshController;
 use App\Http\Controllers\Library\LibraryController;
+use App\Http\Controllers\Library\LibraryIgdbSyncController;
 use App\Http\Controllers\Library\ManualEntryController;
 use App\Http\Controllers\Library\RematchController;
 use App\Http\Controllers\Stats\StatsController;
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);
     Route::post('/library/{game}/rematch', [RematchController::class, 'store']);
     Route::post('/library/{game}/refresh-igdb', [IgdbRefreshController::class, 'store']);
+    Route::post('/library/sync-igdb', [LibraryIgdbSyncController::class, 'store']);
 
     Route::get('/collections', [CollectionController::class, 'index']);
     Route::post('/collections', [CollectionController::class, 'store']);

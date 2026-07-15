@@ -68,6 +68,11 @@ export function useLibrary() {
     return apiFetch<LibraryEntry>(`/api/library/${gameId}/refresh-igdb`, { method: 'POST' })
   }
 
+  /** I.api T31/V38: POST /api/library/sync-igdb — 202, queued, no live status. */
+  async function syncIgdb(): Promise<void> {
+    await apiFetch('/api/library/sync-igdb', { method: 'POST' })
+  }
+
   return {
     entries,
     facets,
@@ -79,6 +84,7 @@ export function useLibrary() {
     fetchGame,
     updateMeta,
     rematch,
-    refreshIgdb
+    refreshIgdb,
+    syncIgdb
   }
 }
