@@ -78,13 +78,27 @@ class WishlistSyncService
         }
 
         $seen = [];
+        $incompletePull = false;
 
         foreach ($appIds as $appId) {
-            $game = $this->gameFromExternal(
-                IgdbClient::EXTERNAL_STEAM,
-                (string) $appId,
-                fn () => $this->steam->appName($appId),
-            );
+            try {
+                $game = $this->gameFromExternal(
+                    IgdbClient::EXTERNAL_STEAM,
+                    (string) $appId,
+                    fn () => $this->steam->appName($appId),
+                );
+            } catch (Throwable $e) {
+                // V46: skip the failed item, never abort the batch. V47: the
+                // pull is now incomplete — this appid may still be present, so
+                // absence reconciliation must not run against a partial $seen.
+                Log::warning('Wishlist steam item resolution failed, skipping', [
+                    'app_id' => $appId,
+                    'error' => $e->getMessage(),
+                ]);
+                $incompletePull = true;
+
+                continue;
+            }
 
             if ($game === null) {
                 continue;
@@ -92,6 +106,13 @@ class WishlistSyncService
 
             $seen[] = $game->id;
             $this->recordPresence($user, $game, 'steam');
+        }
+
+        // V47/B14: reconciling a partial pull would reap still-present items
+        // (absence is keyed on resolved game_id, unlike GOG's raw product id).
+        // Genuine removals propagate on the next fully-resolved sync.
+        if ($incompletePull) {
+            return;
         }
 
         $gone = WishlistItem::where('user_id', $user->id)
@@ -107,7 +128,19 @@ class WishlistSyncService
         $productIds = $this->gog->getWishlist($accessToken);
 
         foreach ($productIds as $productId) {
-            $game = $this->gameFromExternal(IgdbClient::EXTERNAL_GOG, $productId, fn () => null);
+            try {
+                $game = $this->gameFromExternal(IgdbClient::EXTERNAL_GOG, $productId, fn () => null);
+            } catch (Throwable $e) {
+                // V46: skip the failed item. GOG absence is keyed on the raw
+                // product-id list below (V22), so a skipped item is safe — it
+                // stays in $productIds and is never reaped.
+                Log::warning('Wishlist gog item resolution failed, skipping', [
+                    'product_id' => $productId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                continue;
+            }
 
             if ($game === null) {
                 continue;
@@ -235,38 +268,32 @@ class WishlistSyncService
     }
 
     /**
+     * Resolve a store id to a canonical Game, or null when there is no IGDB
+     * mapping and no store-title fallback. May throw on a transient
+     * IGDB/Twitch/Steam-store failure — callers catch per item (V46) and
+     * decide reconciliation safety (V47). A thrown failure is never written to
+     * cache (V26 MISS-on-exception, enforced in resolveExternalIgdbId) so the
+     * item is retried on the next sync.
+     *
      * @param  callable(): ?string  $fallbackTitle
      */
     private function gameFromExternal(int $category, string $uid, callable $fallbackTitle): ?Game
     {
-        try {
-            $igdbId = $this->resolveExternalIgdbId($category, $uid);
+        $igdbId = $this->resolveExternalIgdbId($category, $uid);
 
-            if ($igdbId !== null) {
-                return $this->games->findOrCreate($igdbId);
-            }
+        if ($igdbId !== null) {
+            return $this->games->findOrCreate($igdbId);
+        }
 
-            // V11 spirit: no IGDB mapping still lands a provisional row when a
-            // store title is available.
-            $title = $fallbackTitle();
+        // V11 spirit: no IGDB mapping still lands a provisional row when a
+        // store title is available.
+        $title = $fallbackTitle();
 
-            if ($title === null) {
-                return null;
-            }
-
-            return Game::firstOrCreate(['title' => $title, 'igdb_id' => null]);
-        } catch (Throwable $e) {
-            // V46: one item's IGDB/Twitch/Steam-store failure skips that item,
-            // never aborts the batch (B12). The failure is not written to
-            // cache (V26 MISS-on-exception) — the item retries next sync.
-            Log::warning('Wishlist external resolution failed, skipping item', [
-                'category' => $category,
-                'uid' => $uid,
-                'error' => $e->getMessage(),
-            ]);
-
+        if ($title === null) {
             return null;
         }
+
+        return Game::firstOrCreate(['title' => $title, 'igdb_id' => null]);
     }
 
     /**

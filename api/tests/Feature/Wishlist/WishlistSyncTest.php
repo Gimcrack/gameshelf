@@ -427,6 +427,119 @@ class WishlistSyncTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count($external));
     }
 
+    /**
+     * T45 heal: a pre-existing provisional wishlist row (B11 leftover — no
+     * igdb_id) is replaced by the matched canonical row once the external
+     * mapping resolves on a normal sync.
+     */
+    public function test_provisional_wishlist_row_heals_to_canonical_on_sync(): void
+    {
+        $this->steamConnection();
+        $provisional = Game::create(['title' => 'Old Provisional Guess']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $provisional->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 1145360, 'priority' => 0]]],
+            ]),
+            'api.igdb.com/v4/external_games' => Http::response([
+                ['id' => 5, 'game' => 119388, 'uid' => '1145360', 'external_game_source' => 1],
+            ]),
+            'api.igdb.com/v4/games' => Http::response([
+                ['id' => 119388, 'name' => 'Hades II'],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        $canonical = Game::where('igdb_id', 119388)->firstOrFail();
+        $this->assertSame(1, WishlistItem::where('user_id', $this->user->id)->count());
+        $this->assertDatabaseHas('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $canonical->id,
+        ]);
+    }
+
+    /**
+     * V47/B14: a transient IGDB/Steam failure on a still-wishlisted appid must
+     * not reap the existing row — the pull is incomplete, so Steam absence
+     * reconciliation is skipped this sync (would wrongly treat it as removed).
+     */
+    public function test_transient_failure_does_not_drop_still_present_item(): void
+    {
+        $this->steamConnection();
+        $canonical = Game::create(['igdb_id' => 119388, 'title' => 'Hades II']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $canonical->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 1145360, 'priority' => 0]]],
+            ]),
+            // Transient 500 — appid is STILL on the wishlist, just unresolvable
+            // right now.
+            'api.igdb.com/v4/external_games' => Http::response('err', 500),
+            'store.steampowered.com/api/appdetails*' => Http::response('err', 500),
+        ]);
+
+        $this->runSync();
+
+        // Still on Steam → must not be deleted on a transient miss.
+        $this->assertDatabaseHas('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $canonical->id,
+        ]);
+    }
+
+    /**
+     * V47: a clean no-resolution (delisted appid, no throw) does NOT block
+     * reconciliation — a genuinely-removed wishlist item is still reaped.
+     */
+    public function test_clean_no_resolution_still_reconciles_genuine_removal(): void
+    {
+        $this->steamConnection();
+        // Previously-wishlisted, matched item — now genuinely gone from Steam.
+        $removed = Game::create(['igdb_id' => 119388, 'title' => 'Removed Game']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $removed->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            // Wishlist now returns only a different, delisted appid.
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 555000, 'priority' => 0]]],
+            ]),
+            // 555000: no IGDB mapping, store says delisted → clean null, no throw.
+            'api.igdb.com/v4/external_games' => Http::response([]),
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '555000' => ['success' => false],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        // Reconciliation ran (pull was complete) → removed item reaped.
+        $this->assertDatabaseMissing('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $removed->id,
+        ]);
+    }
+
     public function test_sync_endpoint_dispatches_and_throttles(): void
     {
         Queue::fake();
