@@ -11,13 +11,15 @@ import {
 const route = useRoute()
 const gameId = computed(() => Number(route.params.id))
 
-const { fetchGame, updateMeta } = useLibrary()
+const { fetchGame, updateMeta, refreshIgdb } = useLibrary()
 
 const entry: Ref<LibraryEntry | null> = ref(null)
 const pending = ref(false)
 const error = ref<string | null>(null)
 const saving = ref(false)
 const saveError = ref<string | null>(null)
+const fetching = ref(false)
+const fetchError = ref<string | null>(null)
 
 const status = ref<GameStatus>('unplayed')
 const tagsInput = ref('')
@@ -56,6 +58,21 @@ async function onMatched(newGameId: number): Promise<void> {
     await load()
   } else {
     await navigateTo(`/games/${newGameId}`)
+  }
+}
+
+/** T30/V35: re-fetch this game's current IGDB data on demand. */
+async function onFetch(): Promise<void> {
+  fetching.value = true
+  fetchError.value = null
+
+  try {
+    entry.value = await refreshIgdb(gameId.value)
+    syncFormFromEntry(entry.value)
+  } catch (err) {
+    fetchError.value = (err as { message?: string }).message ?? 'Failed to refresh from IGDB.'
+  } finally {
+    fetching.value = false
   }
 }
 
@@ -140,9 +157,18 @@ async function onSave(): Promise<void> {
           </li>
         </ul>
 
-        <div class="mb-4">
+        <div class="mb-4 flex flex-wrap items-start gap-2">
           <FixMatchPanel :game-id="gameId" :initial-query="entry.title" @matched="onMatched" />
+          <button
+            v-if="entry.igdb_id !== null"
+            :disabled="fetching"
+            class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-50"
+            @click="onFetch"
+          >
+            {{ fetching ? 'Fetching…' : 'Fetch latest from IGDB' }}
+          </button>
         </div>
+        <p v-if="fetchError" class="mb-4 text-sm text-rose-400">{{ fetchError }}</p>
 
         <div v-if="entry.esrb_rating || entry.multiplayer || entry.coop" class="mb-4 flex flex-wrap gap-1.5">
           <span

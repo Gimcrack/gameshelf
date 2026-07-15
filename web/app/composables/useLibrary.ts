@@ -63,6 +63,11 @@ export function useLibrary() {
     })
   }
 
+  /** I.api T30/V35: POST /api/library/:game_id/refresh-igdb — returns the updated entry. */
+  async function refreshIgdb(gameId: number): Promise<LibraryEntry> {
+    return apiFetch<LibraryEntry>(`/api/library/${gameId}/refresh-igdb`, { method: 'POST' })
+  }
+
   return {
     entries,
     facets,
@@ -73,6 +78,7 @@ export function useLibrary() {
     removeManual,
     fetchGame,
     updateMeta,
-    rematch
+    rematch,
+    refreshIgdb
   }
 }

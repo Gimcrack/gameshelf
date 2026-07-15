@@ -7,6 +7,7 @@ use App\Http\Controllers\Connections\ConnectionController;
 use App\Http\Controllers\Discover\DiscoverController;
 use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
+use App\Http\Controllers\Library\IgdbRefreshController;
 use App\Http\Controllers\Library\LibraryController;
 use App\Http\Controllers\Library\ManualEntryController;
 use App\Http\Controllers\Library\RematchController;
@@ -47,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);
     Route::post('/library/{game}/rematch', [RematchController::class, 'store']);
+    Route::post('/library/{game}/refresh-igdb', [IgdbRefreshController::class, 'store']);
 
     Route::get('/collections', [CollectionController::class, 'index']);
     Route::post('/collections', [CollectionController::class, 'store']);
