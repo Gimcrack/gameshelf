@@ -135,6 +135,39 @@ class LibraryTest extends TestCase
         $this->assertSame(['Puzzler'], $titles);
     }
 
+    public function test_filters_by_theme(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Dark One', ['themes' => ['Horror']]), 10);
+        $this->own($steam, $this->game('Light One', ['themes' => ['Comedy']]), 10);
+
+        $titles = array_column($this->getJson('/api/library?theme=Horror')->json(), 'title');
+
+        $this->assertSame(['Dark One'], $titles);
+    }
+
+    public function test_filters_by_keyword(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Pixel One', ['keywords' => ['pixel-art']]), 10);
+        $this->own($steam, $this->game('Realistic One', ['keywords' => ['photorealistic']]), 10);
+
+        $titles = array_column($this->getJson('/api/library?keyword=pixel-art')->json(), 'title');
+
+        $this->assertSame(['Pixel One'], $titles);
+    }
+
+    public function test_filters_by_game_mode(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Solo One', ['game_modes' => ['Single player']]), 10);
+        $this->own($steam, $this->game('Party One', ['game_modes' => ['Multiplayer']]), 10);
+
+        $titles = array_column($this->getJson('/api/library?game_mode=Multiplayer')->json(), 'title');
+
+        $this->assertSame(['Party One'], $titles);
+    }
+
     public function test_filters_by_playtime_range(): void
     {
         $steam = $this->connection('steam');

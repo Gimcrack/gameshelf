@@ -24,6 +24,18 @@ class IgdbGameAttributes
                 fn (array $genre) => $genre['name'],
                 $igdb['genres'] ?? [],
             ),
+            'themes' => array_map(
+                fn (array $theme) => $theme['name'],
+                $igdb['themes'] ?? [],
+            ),
+            'keywords' => array_map(
+                fn (array $keyword) => $keyword['name'],
+                $igdb['keywords'] ?? [],
+            ),
+            'game_modes' => array_map(
+                fn (array $mode) => $mode['name'],
+                $igdb['game_modes'] ?? [],
+            ),
             'release_date' => isset($igdb['first_release_date'])
                 ? Date::createFromTimestamp($igdb['first_release_date'])->toDateString()
                 : null,

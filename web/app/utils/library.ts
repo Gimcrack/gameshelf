@@ -11,6 +11,9 @@ export interface LibraryEntry {
   title: string
   cover_url: string | null
   genres: string[]
+  themes: string[]
+  keywords: string[]
+  game_modes: string[]
   release_date: string | null
   platforms: LibraryPlatform[]
   total_playtime_minutes: number | null
@@ -25,6 +28,9 @@ export interface LibraryFilters {
   order?: 'asc' | 'desc'
   platform?: 'steam' | 'gog'
   genre?: string
+  theme?: string
+  keyword?: string
+  gameMode?: string
   playtimeMin?: number
   playtimeMax?: number
   unplayed?: boolean
@@ -38,6 +44,9 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.order) params.set('order', filters.order)
   if (filters.platform) params.set('platform', filters.platform)
   if (filters.genre) params.set('genre', filters.genre)
+  if (filters.theme) params.set('theme', filters.theme)
+  if (filters.keyword) params.set('keyword', filters.keyword)
+  if (filters.gameMode) params.set('game_mode', filters.gameMode)
   if (filters.playtimeMin !== undefined) params.set('playtime_min', String(filters.playtimeMin))
   if (filters.playtimeMax !== undefined) params.set('playtime_max', String(filters.playtimeMax))
   if (filters.unplayed) params.set('unplayed', '1')

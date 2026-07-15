@@ -59,6 +59,9 @@ class GameMatcherTest extends TestCase
             'name' => 'Portal 2',
             'cover' => ['url' => '//images.igdb.com/igdb/image/upload/t_thumb/co1rs4.jpg'],
             'genres' => [['name' => 'Puzzle'], ['name' => 'Platform']],
+            'themes' => [['name' => 'Comedy'], ['name' => 'Sci-fi']],
+            'keywords' => [['name' => 'physics']],
+            'game_modes' => [['name' => 'Single player'], ['name' => 'Co-operative']],
             'first_release_date' => 1303171200,
         ];
     }
@@ -75,6 +78,9 @@ class GameMatcherTest extends TestCase
         $this->assertSame('Portal 2', $game->title);
         $this->assertStringContainsString('co1rs4', $game->cover_url);
         $this->assertSame(['Puzzle', 'Platform'], $game->genres);
+        $this->assertSame(['Comedy', 'Sci-fi'], $game->themes);
+        $this->assertSame(['physics'], $game->keywords);
+        $this->assertSame(['Single player', 'Co-operative'], $game->game_modes);
         $this->assertSame('2011-04-19', $game->release_date->toDateString());
     }
 

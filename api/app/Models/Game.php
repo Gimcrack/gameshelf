@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['igdb_id', 'title', 'cover_url', 'genres', 'release_date', 'time_to_beat_minutes'])]
+#[Fillable([
+    'igdb_id', 'title', 'cover_url', 'genres', 'themes', 'keywords', 'game_modes',
+    'release_date', 'time_to_beat_minutes',
+])]
 class Game extends Model
 {
     /**
@@ -18,6 +21,9 @@ class Game extends Model
     {
         return [
             'genres' => 'array',
+            'themes' => 'array',
+            'keywords' => 'array',
+            'game_modes' => 'array',
             'release_date' => 'date',
         ];
     }

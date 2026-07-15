@@ -10,6 +10,9 @@ const sort = ref<LibrarySort>('alpha')
 const order = ref<'asc' | 'desc'>('asc')
 const platform = ref<'' | 'steam' | 'gog'>('')
 const genre = ref('')
+const theme = ref('')
+const keyword = ref('')
+const gameMode = ref('')
 const unplayed = ref(false)
 
 const filters = computed<LibraryFilters>(() => ({
@@ -17,6 +20,9 @@ const filters = computed<LibraryFilters>(() => ({
   order: order.value,
   ...(platform.value ? { platform: platform.value } : {}),
   ...(genre.value.trim() ? { genre: genre.value.trim() } : {}),
+  ...(theme.value.trim() ? { theme: theme.value.trim() } : {}),
+  ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
+  ...(gameMode.value.trim() ? { gameMode: gameMode.value.trim() } : {}),
   ...(unplayed.value ? { unplayed: true } : {})
 }))
 
@@ -109,6 +115,33 @@ async function onLogout(): Promise<void> {
           v-model="genre"
           type="text"
           placeholder="e.g. Puzzle"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        Theme
+        <input
+          v-model="theme"
+          type="text"
+          placeholder="e.g. Horror"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        Keyword
+        <input
+          v-model="keyword"
+          type="text"
+          placeholder="e.g. pixel-art"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+        />
+      </label>
+      <label class="flex flex-col gap-1">
+        Game mode
+        <input
+          v-model="gameMode"
+          type="text"
+          placeholder="e.g. Multiplayer"
           class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
         />
       </label>

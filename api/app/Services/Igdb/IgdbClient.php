@@ -18,6 +18,10 @@ class IgdbClient
 
     private const DISCOVER_FIELDS = 'name,cover.url,genres.name,first_release_date,total_rating';
 
+    // V30: themes/keywords/game_modes ride along on the same request that
+    // already fetches genres — no extra IGDB call, no throttle/cache change.
+    private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,first_release_date';
+
     /** §I discover browse sort vocabulary → IGDB order clauses. */
     private const BROWSE_SORTS = [
         'rating' => 'total_rating desc',
@@ -49,8 +53,9 @@ class IgdbClient
         $this->throttle();
 
         $query = sprintf(
-            'search "%s"; fields name,cover.url,genres.name,first_release_date; limit 5;',
+            'search "%s"; fields %s; limit 5;',
             str_replace('"', '\"', $title),
+            self::CANONICAL_FIELDS,
         );
 
         $response = Http::withHeaders([
@@ -177,7 +182,8 @@ class IgdbClient
         $this->throttle();
 
         $query = sprintf(
-            'fields name,cover.url,genres.name,first_release_date; where id = %d; limit 1;',
+            'fields %s; where id = %d; limit 1;',
+            self::CANONICAL_FIELDS,
             $igdbId,
         );
 

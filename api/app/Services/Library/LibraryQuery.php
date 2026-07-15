@@ -54,6 +54,9 @@ class LibraryQuery
             'title' => $game->title,
             'cover_url' => $game->cover_url,
             'genres' => $game->genres ?? [],
+            'themes' => $game->themes ?? [],
+            'keywords' => $game->keywords ?? [],
+            'game_modes' => $game->game_modes ?? [],
             'release_date' => $game->release_date?->toDateString(),
             'time_to_beat_minutes' => $game->time_to_beat_minutes,
             // No meta row means untouched — status defaults to unplayed.
@@ -95,6 +98,15 @@ class LibraryQuery
             ))
             ->when(isset($filters['genre']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array($filters['genre'], $e['genres'], true),
+            ))
+            ->when(isset($filters['theme']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array($filters['theme'], $e['themes'], true),
+            ))
+            ->when(isset($filters['keyword']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array($filters['keyword'], $e['keywords'], true),
+            ))
+            ->when(isset($filters['game_mode']), fn (Collection $c) => $c->filter(
+                fn (array $e) => in_array($filters['game_mode'], $e['game_modes'], true),
             ))
             ->when(isset($filters['playtime_min']), fn (Collection $c) => $c->filter(
                 fn (array $e) => $e['total_playtime_minutes'] !== null
