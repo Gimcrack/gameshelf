@@ -13,44 +13,26 @@ const themes = defineModel<string[]>('themes', { default: () => [] })
 const keywords = defineModel<string[]>('keywords', { default: () => [] })
 const gameModes = defineModel<string[]>('gameModes', { default: () => [] })
 const deckStatuses = defineModel<DeckStatus[]>('deckStatuses', { default: () => [] })
-const esrb = defineModel<string>('esrb', { default: '' })
+// T36: multi-select; 'none' = unrated, displayed "No Rating".
+const esrb = defineModel<string[]>('esrb', { default: () => [] })
 const unplayed = defineModel<boolean>('unplayed', { default: false })
 const showHidden = defineModel<boolean>('showHidden', { default: false })
 
+// T36: static list — no facets source for deck status (I.api).
 const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'verified']
+
+const ESRB_LABELS: Record<string, string> = { none: 'No Rating' }
 </script>
 
 <template>
   <aside class="flex w-56 shrink-0 flex-col gap-5 text-sm text-slate-400">
-    <label class="flex flex-col gap-1">
-      ESRB
-      <select
-        v-model="esrb"
-        class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
-      >
-        <option value="">Any</option>
-        <option value="RP">RP</option>
-        <option value="E">E</option>
-        <option value="E10">E10+</option>
-        <option value="T">T</option>
-        <option value="M">M</option>
-        <option value="AO">AO</option>
-      </select>
-    </label>
-
     <FacetFilter v-model="platforms" label="Platform" :options="facets.platforms" />
     <FacetFilter v-model="genres" label="Genre" :options="facets.genres" />
     <FacetFilter v-model="themes" label="Theme" :options="facets.themes" />
     <FacetFilter v-model="keywords" label="Keyword" :options="facets.keywords" />
     <FacetFilter v-model="gameModes" label="Game mode" :options="gameModeOptions" />
-
-    <fieldset class="flex flex-col gap-1">
-      <legend class="mb-1 text-slate-300">Steam Deck</legend>
-      <label v-for="status in DECK_STATUSES" :key="status" class="flex items-center gap-2 pb-0.5">
-        <input v-model="deckStatuses" type="checkbox" :value="status" class="accent-teal-500" />
-        {{ status }}
-      </label>
-    </fieldset>
+    <FacetFilter v-model="esrb" label="ESRB" :options="facets.esrb_ratings" :labels="ESRB_LABELS" />
+    <FacetFilter v-model="deckStatuses" label="Steam Deck" :options="DECK_STATUSES" />
 
     <div class="flex flex-col gap-1">
       <label class="flex items-center gap-2 pb-0.5">

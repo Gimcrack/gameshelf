@@ -85,6 +85,13 @@ describe('buildLibraryQuery', () => {
     expect(params.get('q')).toBe('portal')
     expect(params.get('platform')).toBe('steam,gog')
   })
+
+  // T36: esrb multi-select — repeated esrb[] params, same as deck_status[].
+  it('maps esrb to repeated esrb[] params', () => {
+    const params = new URLSearchParams(buildLibraryQuery({ esrb: ['M', 'none'] }))
+    expect(params.getAll('esrb[]')).toEqual(['M', 'none'])
+    expect(buildLibraryQuery({ esrb: [] })).toBe('')
+  })
 })
 
 describe('formatPlaytime', () => {

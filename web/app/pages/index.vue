@@ -21,7 +21,7 @@ const gameModes = ref<string[]>([])
 const unplayed = ref(false)
 const showHidden = ref(false)
 const deckStatuses = ref<DeckStatus[]>([])
-const esrb = ref('')
+const esrb = ref<string[]>([])
 
 const filters = computed<LibraryFilters>(() => {
   // V40: bool-backed game-mode labels route through the V32 flag params.
@@ -40,7 +40,7 @@ const filters = computed<LibraryFilters>(() => {
     ...(unplayed.value ? { unplayed: true } : {}),
     ...(showHidden.value ? { includeHidden: true } : {}),
     ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
-    ...(esrb.value ? { esrb: esrb.value } : {})
+    ...(esrb.value.length ? { esrb: esrb.value } : {})
   }
 })
 

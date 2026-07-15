@@ -40,9 +40,13 @@ export function splitGameModeSelection(selected: string[]): GameModeSelection {
   )
 }
 
-export function filterFacetOptions(options: string[], query: string): string[] {
+export function filterFacetOptions(
+  options: string[],
+  query: string,
+  labels?: Record<string, string>,
+): string[] {
   const needle = query.trim().toLowerCase()
   if (!needle) return options
 
-  return options.filter((option) => option.toLowerCase().includes(needle))
+  return options.filter((option) => (labels?.[option] ?? option).toLowerCase().includes(needle))
 }

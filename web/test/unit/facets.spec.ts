@@ -26,6 +26,13 @@ describe('filterFacetOptions', () => {
     expect(filterFacetOptions(options, 'zzz')).toEqual([])
   })
 
+  // T36: labels map raw values to display text — search matches the label.
+  it('matches against display labels when provided', () => {
+    const labels = { none: 'No Rating' }
+    expect(filterFacetOptions(['E', 'M', 'none'], 'no rating', labels)).toEqual(['none'])
+    expect(filterFacetOptions(['E', 'M', 'none'], 'none', labels)).toEqual([])
+  })
+
   it('does not mutate the input array', () => {
     const input = ['B', 'A']
     filterFacetOptions(input, 'a')

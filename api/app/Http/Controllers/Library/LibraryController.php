@@ -39,8 +39,9 @@ class LibraryController extends Controller
             // T26: matches any owning platform row in the selected set.
             'deck_status' => ['sometimes', 'array'],
             'deck_status.*' => [Rule::enum(DeckStatus::class)],
-            // T27
-            'esrb' => ['sometimes', 'in:E,E10,T,M,AO,RP'],
+            // T27, multi-select T36 — `none` matches unrated (esrb_rating null).
+            'esrb' => ['sometimes', 'array'],
+            'esrb.*' => ['in:E,E10,T,M,AO,RP,none'],
             'multiplayer' => ['sometimes', 'boolean'],
             'coop' => ['sometimes', 'boolean'],
             'local_multiplayer' => ['sometimes', 'boolean'],

@@ -392,15 +392,41 @@ class LibraryTest extends TestCase
         $this->assertNull($entries['Unrated']['esrb_rating']);
     }
 
+    // T36: multi-select, mirrors deck_status[].
     public function test_filters_by_esrb(): void
     {
         $steam = $this->connection('steam');
         $this->own($steam, $this->game('Mature', ['esrb_rating' => 'M']), 10);
         $this->own($steam, $this->game('Everyone', ['esrb_rating' => 'E']), 10);
 
-        $titles = array_column($this->getJson('/api/library?esrb=M')->json(), 'title');
+        $titles = array_column($this->getJson('/api/library?esrb[]=M')->json(), 'title');
 
         $this->assertSame(['Mature'], $titles);
+    }
+
+    /**
+     * T36/V33: `none` sentinel matches unrated (esrb_rating null) at the
+     * query layer only — storage stays null.
+     */
+    public function test_filters_by_multiple_esrb_including_none(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Mature', ['esrb_rating' => 'M']), 10);
+        $this->own($steam, $this->game('Everyone', ['esrb_rating' => 'E']), 10);
+        $this->own($steam, $this->game('Unrated'), 10);
+
+        $titles = array_column(
+            $this->getJson('/api/library?esrb[]=E&esrb[]=none')->json(),
+            'title',
+        );
+        sort($titles);
+
+        $this->assertSame(['Everyone', 'Unrated'], $titles);
+    }
+
+    public function test_rejects_invalid_esrb_value(): void
+    {
+        $this->getJson('/api/library?esrb[]=X')->assertUnprocessable();
     }
 
     /**
@@ -504,6 +530,40 @@ class LibraryTest extends TestCase
         $this->assertSame(['Puzzle', 'Racing'], $facets['genres']);
         $this->assertSame(['Comedy'], $facets['themes']);
         $this->assertSame(['gog', 'steam'], $facets['platforms']);
+    }
+
+    /**
+     * T36/V28/V33: esrb_ratings facet = distinct in-library values sorted,
+     * `none` appended when unrated (null) games exist; hidden games'
+     * ratings excluded.
+     */
+    public function test_facets_esrb_ratings_with_none_sentinel(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Mature', ['esrb_rating' => 'M']), 10);
+        $this->own($steam, $this->game('Everyone', ['esrb_rating' => 'E']), 10);
+        $this->own($steam, $this->game('Unrated'), 10);
+
+        $hidden = $this->game('Hidden AO', ['esrb_rating' => 'AO']);
+        $this->own($steam, $hidden, 10);
+        \App\Models\UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hidden->id,
+            'hidden' => true,
+        ]);
+
+        $facets = $this->getJson('/api/library/facets')->assertOk()->json();
+
+        $this->assertSame(['E', 'M', 'none'], $facets['esrb_ratings']);
+    }
+
+    public function test_facets_esrb_ratings_omit_none_when_all_rated(): void
+    {
+        $this->own($this->connection('steam'), $this->game('Mature', ['esrb_rating' => 'M']), 10);
+
+        $facets = $this->getJson('/api/library/facets')->assertOk()->json();
+
+        $this->assertSame(['M'], $facets['esrb_ratings']);
     }
 
     public function test_facets_requires_auth(): void

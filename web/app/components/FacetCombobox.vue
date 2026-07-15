@@ -10,12 +10,18 @@ import {
 } from '@headlessui/vue'
 import { filterFacetOptions } from '../utils/facets'
 
-const props = defineProps<{ label: string; options: string[] }>()
+// T36: labels maps option values to display text (e.g. 'none' → 'No Rating');
+// the model always carries raw values.
+const props = defineProps<{ label: string; options: string[]; labels?: Record<string, string> }>()
 
 const selected = defineModel<string[]>({ default: () => [] })
 
 const query = ref('')
-const filtered = computed(() => filterFacetOptions(props.options, query.value))
+const filtered = computed(() => filterFacetOptions(props.options, query.value, props.labels))
+
+function display(value: string): string {
+  return props.labels?.[value] ?? value
+}
 
 function removeValue(value: string) {
   selected.value = selected.value.filter((v) => v !== value)
@@ -52,7 +58,7 @@ function removeValue(value: string) {
             :class="active ? 'bg-slate-800 text-slate-100' : 'text-slate-400'"
           >
             <span class="w-3 text-teal-400">{{ isSelected ? '✓' : '' }}</span>
-            {{ option }}
+            {{ display(option) }}
           </li>
         </ComboboxOption>
       </ComboboxOptions>
@@ -64,11 +70,11 @@ function removeValue(value: string) {
         :key="value"
         class="flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-200"
       >
-        {{ value }}
+        {{ display(value) }}
         <button
           type="button"
           class="text-slate-500 hover:text-teal-400"
-          :aria-label="`Remove ${value}`"
+          :aria-label="`Remove ${display(value)}`"
           @click="removeValue(value)"
         >
           ×

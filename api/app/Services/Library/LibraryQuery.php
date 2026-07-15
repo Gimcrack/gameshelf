@@ -49,7 +49,28 @@ class LibraryQuery
                 ->sort()
                 ->values()
                 ->all(),
+            'esrb_ratings' => $this->esrbRatings($entries),
         ];
+    }
+
+    /**
+     * T36: distinct ESRB values in-library, + `none` sentinel when unrated
+     * (null, V33) games exist — sentinel is facet/query layer only.
+     *
+     * @param  Collection<int, array<string, mixed>>  $entries
+     * @return list<string>
+     */
+    private function esrbRatings(Collection $entries): array
+    {
+        $ratings = $entries->pluck('esrb_rating')
+            ->filter(fn (?string $v) => $v !== null)
+            ->unique()
+            ->sort()
+            ->values();
+
+        return $entries->contains(fn (array $e) => $e['esrb_rating'] === null)
+            ? [...$ratings, 'none']
+            : $ratings->all();
     }
 
     /**
@@ -208,8 +229,12 @@ class LibraryQuery
                     array_filter(array_column($e['platforms'], 'deck_status')),
                 ) !== [],
             ))
+            // T36: multi-select; `none` sentinel matches unrated (null) —
+            // query-layer only, storage stays null (V33). valueList keeps
+            // legacy single-string values (saved collection filters, T23)
+            // working.
             ->when(isset($filters['esrb']), fn (Collection $c) => $c->filter(
-                fn (array $e) => $e['esrb_rating'] === $filters['esrb'],
+                fn (array $e) => in_array($e['esrb_rating'] ?? 'none', $this->valueList($filters['esrb']), true),
             ))
             // T27/V32: equality against the derived flag; null (best-effort
             // miss) matches neither an explicit true nor false query.

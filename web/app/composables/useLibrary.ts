@@ -9,7 +9,14 @@ import {
   type LibraryMetaUpdate
 } from '../utils/library'
 
-const EMPTY_FACETS: LibraryFacets = { genres: [], themes: [], keywords: [], game_modes: [], platforms: [] }
+const EMPTY_FACETS: LibraryFacets = {
+  genres: [],
+  themes: [],
+  keywords: [],
+  game_modes: [],
+  platforms: [],
+  esrb_ratings: []
+}
 
 export function useLibrary() {
   const entries: Ref<LibraryEntry[]> = useState<LibraryEntry[]>('library-entries', () => [])

@@ -65,7 +65,8 @@ export interface LibraryFilters {
   unplayed?: boolean
   includeHidden?: boolean
   deckStatus?: DeckStatus[]
-  esrb?: string
+  // T36: multi-select; 'none' = unrated (esrb_rating null).
+  esrb?: string[]
   multiplayer?: boolean
   coop?: boolean
   localMultiplayer?: boolean
@@ -79,6 +80,8 @@ export interface LibraryFacets {
   keywords: string[]
   game_modes: string[]
   platforms: string[]
+  // T36: distinct in-library values; 'none' present when unrated games exist.
+  esrb_ratings: string[]
 }
 
 /** Maps camelCase filter state to the API's snake_case query string. */
@@ -97,7 +100,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.unplayed) params.set('unplayed', '1')
   if (filters.includeHidden) params.set('include_hidden', '1')
   for (const status of filters.deckStatus ?? []) params.append('deck_status[]', status)
-  if (filters.esrb) params.set('esrb', filters.esrb)
+  for (const rating of filters.esrb ?? []) params.append('esrb[]', rating)
   if (filters.multiplayer) params.set('multiplayer', '1')
   if (filters.coop) params.set('coop', '1')
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')
