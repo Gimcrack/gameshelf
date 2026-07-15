@@ -63,7 +63,7 @@ onMounted(() => fetchStats())
         </dl>
 
         <p class="mt-8 text-right text-sm font-bold tracking-tight text-slate-500">
-          Game<span class="text-teal-500">Shelf</span>
+          Game<span class="text-teal-500">Bower</span>
         </p>
       </div>
     </section>

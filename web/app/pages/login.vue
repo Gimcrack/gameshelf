@@ -43,7 +43,7 @@ async function onSubmit(): Promise<void> {
 <template>
   <main class="mx-auto mt-16 max-w-sm rounded-xl border border-slate-800 bg-slate-900 p-8">
     <h1 class="mb-6 text-xl font-bold tracking-tight">
-      Log in to Game<span class="text-teal-400">Shelf</span>
+      Log in to Game<span class="text-teal-400">Bower</span>
     </h1>
     <form novalidate @submit.prevent="onSubmit">
       <label class="mb-1 block text-sm text-slate-300">

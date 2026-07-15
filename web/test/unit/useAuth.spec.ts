@@ -47,7 +47,7 @@ describe('useAuth', () => {
 
     expect(token.value).toBe('abc123')
     expect(user.value).toEqual({ id: 1, email: 'player@example.com', created_at: '2026-01-01' })
-    expect(localStorage.getItem('gameshelf_token')).toBe('abc123')
+    expect(localStorage.getItem('gamebower_token')).toBe('abc123')
   })
 
   it('logout clears the token, user, and localStorage', async () => {
@@ -64,7 +64,7 @@ describe('useAuth', () => {
 
     expect(token.value).toBeNull()
     expect(user.value).toBeNull()
-    expect(localStorage.getItem('gameshelf_token')).toBeNull()
+    expect(localStorage.getItem('gamebower_token')).toBeNull()
   })
 
   it('logout clears local session even when the API call fails', async () => {

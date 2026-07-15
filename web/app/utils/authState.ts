@@ -6,15 +6,15 @@ export interface AuthUser {
   created_at: string
 }
 
-export const TOKEN_STORAGE_KEY = 'gameshelf_token'
+export const TOKEN_STORAGE_KEY = 'gamebower_token'
 
 /**
  * Shared, reactive auth state. useState keys the value on the Nuxt app
  * instance so every composable/util that calls these getters shares the
  * same reactive ref.
  */
-export const useAuthUser = () => useState<AuthUser | null>('gameshelf_auth_user', () => null)
-export const useAuthToken = () => useState<string | null>('gameshelf_auth_token', () => null)
+export const useAuthUser = () => useState<AuthUser | null>('gamebower_auth_user', () => null)
+export const useAuthToken = () => useState<string | null>('gamebower_auth_token', () => null)
 
 function hasLocalStorage(): boolean {
   return typeof localStorage !== 'undefined'

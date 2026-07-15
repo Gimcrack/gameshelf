@@ -2,7 +2,7 @@
 const steps = [
   {
     title: 'Connect',
-    body: 'Link your Steam and GOG accounts. GameShelf pulls every game you own, automatically.'
+    body: 'Link your Steam and GOG accounts. GameBower pulls every game you own, automatically.'
   },
   {
     title: 'One shelf',
@@ -34,7 +34,7 @@ const spines = [
   <main class="mx-auto max-w-4xl px-6 pb-20 pt-14">
     <header class="mb-16 flex items-center justify-between">
       <p class="text-lg font-bold tracking-tight">
-        Game<span class="text-teal-400">Shelf</span>
+        Game<span class="text-teal-400">Bower</span>
       </p>
       <NuxtLink
         to="/login"
@@ -50,7 +50,7 @@ const spines = [
         <span class="text-teal-400">One shelf.</span>
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg text-slate-400">
-        Your library is scattered across Steam and GOG. GameShelf gathers it in one
+        Your library is scattered across Steam and GOG. GameBower gathers it in one
         place, deduplicates it, and shows you what's still waiting to be played.
       </p>
       <div class="mt-8 flex items-center justify-center gap-4">
@@ -90,7 +90,7 @@ const spines = [
     </section>
 
     <footer class="mt-16 text-center text-sm text-slate-500">
-      Free while in beta. Your accounts stay yours — GameShelf only reads your library.
+      Free while in beta. Your accounts stay yours — GameBower only reads your library.
     </footer>
   </main>
 </template>
