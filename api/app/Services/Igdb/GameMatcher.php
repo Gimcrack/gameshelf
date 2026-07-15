@@ -42,7 +42,17 @@ class GameMatcher
             return;
         }
 
-        $igdb = $cached ?? $this->client->searchGame($ownedGame->game->title);
+        // V26: a transient failure (network, auth, rate limit) never aborts
+        // the rest of the batch — no MISS marker written, so this game is
+        // simply retried on the next sync instead of stuck provisional
+        // forever.
+        try {
+            $igdb = $cached ?? $this->client->searchGame($ownedGame->game->title);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return;
+        }
 
         if ($igdb === null) {
             // V11: no match — provisional row stays; short-lived miss marker

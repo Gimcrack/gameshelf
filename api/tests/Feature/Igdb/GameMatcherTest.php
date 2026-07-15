@@ -121,6 +121,35 @@ class GameMatcherTest extends TestCase
         $this->assertDatabaseMissing('games', ['id' => $gameB->id]);
     }
 
+    /**
+     * V26: one game's search failure never aborts the rest of the batch —
+     * previously an exception mid-loop stranded every subsequent game as
+     * provisional with no retry path.
+     */
+    public function test_one_game_failure_does_not_abort_rest_of_batch(): void
+    {
+        Http::fake([
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::sequence()
+                ->push(null, 500)
+                ->push([$this->portalIgdbRecord()]),
+            'api.igdb.com/v4/game_time_to_beats' => Http::response([]),
+        ]);
+        $connection = PlatformConnection::factory()->create(['status' => 'ok']);
+        [$failingOwned, $failingGame] = $this->provisionalOwnedGame('Fails To Search', '111');
+        $failingOwned->update(['platform_connection_id' => $connection->id, 'user_id' => $connection->user_id]);
+        [$succeedsOwned, $succeedsGame] = $this->provisionalOwnedGame('Portal 2', '620');
+        $succeedsOwned->update(['platform_connection_id' => $connection->id, 'user_id' => $connection->user_id]);
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $this->assertNull($failingGame->fresh()->igdb_id);
+        $this->assertSame(72, $succeedsGame->fresh()->igdb_id);
+    }
+
     public function test_sync_job_matches_after_ingestion(): void
     {
         Http::fake([
