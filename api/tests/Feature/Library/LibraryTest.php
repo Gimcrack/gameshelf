@@ -431,4 +431,85 @@ class LibraryTest extends TestCase
             array_column($this->getJson('/api/library?multiplayer=0')->json(), 'title'),
         );
     }
+
+    /**
+     * T28: title substring, case-insensitive.
+     */
+    public function test_filters_by_title_search(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Portal 2'), 10);
+        $this->own($steam, $this->game('Half-Life'), 10);
+
+        $titles = array_column($this->getJson('/api/library?q=portal')->json(), 'title');
+
+        $this->assertSame(['Portal 2'], $titles);
+    }
+
+    /**
+     * T28: multi-select via comma string — same convention as `tags`,
+     * single value still behaves exactly as before.
+     */
+    public function test_filters_by_multiple_genres(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Puzzler', ['genres' => ['Puzzle']]), 10);
+        $this->own($steam, $this->game('Shooter', ['genres' => ['Shooter']]), 10);
+        $this->own($steam, $this->game('Racer', ['genres' => ['Racing']]), 10);
+
+        $titles = array_column(
+            $this->getJson('/api/library?genre=Puzzle,Shooter')->json(),
+            'title',
+        );
+        sort($titles);
+
+        $this->assertSame(['Puzzler', 'Shooter'], $titles);
+    }
+
+    public function test_filters_by_multiple_platforms(): void
+    {
+        $this->own($this->connection('steam'), $this->game('Steam Game'), 10);
+        $this->own($this->connection('gog'), $this->game('GOG Game'), 10);
+        $this->own($this->connection('manual'), $this->game('Manual Game'), 10);
+
+        $titles = array_column(
+            $this->getJson('/api/library?platform=steam,gog')->json(),
+            'title',
+        );
+        sort($titles);
+
+        $this->assertSame(['GOG Game', 'Steam Game'], $titles);
+    }
+
+    /**
+     * T28/V28/V36: facets exclude hidden games and reflect the caller's
+     * full library vocabulary.
+     */
+    public function test_facets_returns_distinct_values_excluding_hidden(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Puzzler', ['genres' => ['Puzzle'], 'themes' => ['Comedy']]), 10);
+        $this->own($this->connection('gog'), $this->game('Racer', ['genres' => ['Racing']]), 10);
+
+        $hidden = $this->game('Hidden Horror', ['genres' => ['Horror']]);
+        $this->own($steam, $hidden, 10);
+        \App\Models\UserGameMeta::create([
+            'user_id' => $this->user->id,
+            'game_id' => $hidden->id,
+            'hidden' => true,
+        ]);
+
+        $facets = $this->getJson('/api/library/facets')->assertOk()->json();
+
+        $this->assertSame(['Puzzle', 'Racing'], $facets['genres']);
+        $this->assertSame(['Comedy'], $facets['themes']);
+        $this->assertSame(['gog', 'steam'], $facets['platforms']);
+    }
+
+    public function test_facets_requires_auth(): void
+    {
+        $this->withHeaders(['Authorization' => ''])
+            ->getJson('/api/library/facets')
+            ->assertUnauthorized();
+    }
 }

@@ -54,7 +54,8 @@ export type LibrarySort = 'alpha' | 'playtime' | 'last_played' | 'added'
 export interface LibraryFilters {
   sort?: LibrarySort
   order?: 'asc' | 'desc'
-  platform?: 'steam' | 'gog'
+  // T28: multi-select, comma-separated (same convention as `tags`).
+  platform?: string
   genre?: string
   theme?: string
   keyword?: string
@@ -69,6 +70,15 @@ export interface LibraryFilters {
   coop?: boolean
   localMultiplayer?: boolean
   localCoop?: boolean
+  q?: string
+}
+
+export interface LibraryFacets {
+  genres: string[]
+  themes: string[]
+  keywords: string[]
+  game_modes: string[]
+  platforms: string[]
 }
 
 /** Maps camelCase filter state to the API's snake_case query string. */
@@ -92,6 +102,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.coop) params.set('coop', '1')
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')
   if (filters.localCoop) params.set('local_coop', '1')
+  if (filters.q) params.set('q', filters.q)
 
   return params.toString()
 }

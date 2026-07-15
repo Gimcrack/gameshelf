@@ -21,11 +21,13 @@ class LibraryController extends Controller
         $validated = $request->validate([
             'sort' => ['sometimes', 'in:alpha,playtime,last_played,added'],
             'order' => ['sometimes', 'in:asc,desc'],
-            'platform' => ['sometimes', 'in:steam,gog'],
-            'genre' => ['sometimes', 'string', 'max:100'],
-            'theme' => ['sometimes', 'string', 'max:100'],
-            'keyword' => ['sometimes', 'string', 'max:100'],
-            'game_mode' => ['sometimes', 'string', 'max:100'],
+            // T28: multi-select, comma-separated (same convention as `tags`).
+            'platform' => ['sometimes', 'string', 'max:100'],
+            'genre' => ['sometimes', 'string', 'max:300'],
+            'theme' => ['sometimes', 'string', 'max:300'],
+            'keyword' => ['sometimes', 'string', 'max:300'],
+            'game_mode' => ['sometimes', 'string', 'max:300'],
+            'q' => ['sometimes', 'string', 'max:200'],
             'playtime_min' => ['sometimes', 'integer', 'min:0'],
             'playtime_max' => ['sometimes', 'integer', 'min:0'],
             'unplayed' => ['sometimes', 'boolean'],
@@ -58,6 +60,15 @@ class LibraryController extends Controller
         }
 
         return response()->json($library->forUser($request->user(), $validated));
+    }
+
+    /**
+     * I.api T28: GET /api/library/facets — distinct filter-able values
+     * across the caller's library, feeding the left-sidebar checkboxes.
+     */
+    public function facets(Request $request, LibraryQuery $library): JsonResponse
+    {
+        return response()->json($library->facetsForUser($request->user()));
     }
 
     /**

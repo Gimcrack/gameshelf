@@ -19,6 +19,11 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     game_modes: [],
     release_date: null,
     time_to_beat_minutes: null,
+    esrb_rating: null,
+    multiplayer: null,
+    coop: null,
+    local_multiplayer: null,
+    local_coop: null,
     status: 'unplayed',
     status_declared: false,
     tags: [],
@@ -30,7 +35,8 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
         platform: 'steam',
         connection_status: 'ok',
         playtime_minutes: 100,
-        last_played_at: null
+        last_played_at: null,
+        deck_status: null
       }
     ],
     total_playtime_minutes: 100,
@@ -72,6 +78,13 @@ describe('buildLibraryQuery', () => {
     expect(buildLibraryQuery({ includeHidden: true })).toBe('include_hidden=1')
     expect(buildLibraryQuery({ includeHidden: false })).toBe('')
   })
+
+  // T28: title search + multi-select platform (comma-string, same as tags).
+  it('maps q and comma-joined multi-select platform', () => {
+    const params = new URLSearchParams(buildLibraryQuery({ q: 'portal', platform: 'steam,gog' }))
+    expect(params.get('q')).toBe('portal')
+    expect(params.get('platform')).toBe('steam,gog')
+  })
 })
 
 describe('formatPlaytime', () => {
@@ -99,7 +112,8 @@ describe('hasDisconnectedPlatform', () => {
           platform: 'steam',
           connection_status: 'disconnected',
           playtime_minutes: 100,
-          last_played_at: null
+          last_played_at: null,
+          deck_status: null
         }
       ]
     })
@@ -118,7 +132,8 @@ describe('hasManualEntry', () => {
           platform: 'manual',
           connection_status: 'ok',
           playtime_minutes: null,
-          last_played_at: null
+          last_played_at: null,
+          deck_status: null
         }
       ]
     })

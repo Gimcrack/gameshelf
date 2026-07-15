@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
 
     Route::get('/library', [LibraryController::class, 'index']);
+    // T28: must precede /library/{game} — otherwise "facets" binds as {game}.
+    Route::get('/library/facets', [LibraryController::class, 'facets']);
     Route::get('/library/{game}', [LibraryController::class, 'show']);
     Route::post('/library', [ManualEntryController::class, 'store']);
     Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);

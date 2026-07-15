@@ -21,21 +21,67 @@ class LibraryQuery
      */
     public function forUser(User $user, array $filters): array
     {
-        // V6: meta lives apart from platform data and is joined only here,
-        // at read time.
+        return $this->sort($this->filter($this->entriesFor($user), $filters), $filters)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * T28: distinct genre/theme/keyword/game_mode/platform values across
+     * the caller's (non-hidden, V28/V36) library — feeds the left-sidebar
+     * checkbox filters. Static full vocabulary, ⊥ responsive to other
+     * active filter selections (V36).
+     *
+     * @return array<string, list<string>>
+     */
+    public function facetsForUser(User $user): array
+    {
+        $entries = $this->entriesFor($user)->reject(fn (array $e) => $e['hidden']);
+
+        return [
+            'genres' => $this->distinctValues($entries, 'genres'),
+            'themes' => $this->distinctValues($entries, 'themes'),
+            'keywords' => $this->distinctValues($entries, 'keywords'),
+            'game_modes' => $this->distinctValues($entries, 'game_modes'),
+            'platforms' => $entries
+                ->flatMap(fn (array $e) => array_column($e['platforms'], 'platform'))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * V1/V6: dedupes owned_games to one entry per game, joining user meta
+     * at read time — the shared base both forUser and facetsForUser build on.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function entriesFor(User $user): Collection
+    {
         $metaByGame = UserGameMeta::where('user_id', $user->id)
             ->get()
             ->keyBy('game_id');
 
-        $entries = OwnedGame::query()
+        return OwnedGame::query()
             ->where('user_id', $user->id)
             ->with(['game', 'connection'])
             ->get()
             ->groupBy('game_id')
             ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id)))
             ->values();
+    }
 
-        return $this->sort($this->filter($entries, $filters), $filters)
+    /**
+     * @param  Collection<int, array<string, mixed>>  $entries
+     * @return list<string>
+     */
+    private function distinctValues(Collection $entries, string $field): array
+    {
+        return $entries->flatMap(fn (array $e) => $e[$field])
+            ->unique()
+            ->sort()
             ->values()
             ->all();
     }
@@ -128,24 +174,31 @@ class LibraryQuery
             ->when(empty($filters['include_hidden']), fn (Collection $c) => $c->filter(
                 fn (array $e) => ! $e['hidden'],
             ))
+            // T28: multi-select via the same comma-string-or-array
+            // convention as `tags` (valueList) — a single value behaves
+            // exactly as before (backward compatible with T22 callers and
+            // saved custom-collection filter JSON, T23).
             ->when(isset($filters['platform']), fn (Collection $c) => $c->filter(
-                fn (array $e) => in_array(
-                    $filters['platform'],
+                fn (array $e) => array_intersect(
+                    $this->valueList($filters['platform']),
                     array_column($e['platforms'], 'platform'),
-                    true,
-                ),
+                ) !== [],
             ))
             ->when(isset($filters['genre']), fn (Collection $c) => $c->filter(
-                fn (array $e) => in_array($filters['genre'], $e['genres'], true),
+                fn (array $e) => array_intersect($this->valueList($filters['genre']), $e['genres']) !== [],
             ))
             ->when(isset($filters['theme']), fn (Collection $c) => $c->filter(
-                fn (array $e) => in_array($filters['theme'], $e['themes'], true),
+                fn (array $e) => array_intersect($this->valueList($filters['theme']), $e['themes']) !== [],
             ))
             ->when(isset($filters['keyword']), fn (Collection $c) => $c->filter(
-                fn (array $e) => in_array($filters['keyword'], $e['keywords'], true),
+                fn (array $e) => array_intersect($this->valueList($filters['keyword']), $e['keywords']) !== [],
             ))
             ->when(isset($filters['game_mode']), fn (Collection $c) => $c->filter(
-                fn (array $e) => in_array($filters['game_mode'], $e['game_modes'], true),
+                fn (array $e) => array_intersect($this->valueList($filters['game_mode']), $e['game_modes']) !== [],
+            ))
+            // T28: title substring, case-insensitive.
+            ->when(! empty($filters['q']), fn (Collection $c) => $c->filter(
+                fn (array $e) => str_contains(mb_strtolower($e['title']), mb_strtolower(trim($filters['q']))),
             ))
             // T26/V31: matches any owning platform row whose deck_status is
             // in the selected set; null (never checked) never matches.
@@ -193,7 +246,7 @@ class LibraryQuery
                 fn (array $e) => $e['status'] === $filters['status'],
             ))
             ->when(isset($filters['tags']), fn (Collection $c) => $c->filter(
-                fn (array $e) => array_intersect($this->tagList($filters['tags']), $e['tags']) !== [],
+                fn (array $e) => array_intersect($this->valueList($filters['tags']), $e['tags']) !== [],
             ))
             ->when(isset($filters['collection']), fn (Collection $c) => $this->systemCollection(
                 $c,
@@ -204,9 +257,9 @@ class LibraryQuery
     /**
      * @return list<string>
      */
-    private function tagList(string|array $tags): array
+    private function valueList(string|array $value): array
     {
-        return is_array($tags) ? array_values($tags) : array_map('trim', explode(',', $tags));
+        return is_array($value) ? array_values($value) : array_map('trim', explode(',', $value));
     }
 
     /**
