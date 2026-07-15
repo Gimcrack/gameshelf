@@ -33,7 +33,13 @@ class IgdbClient
 
     // V30: themes/keywords/game_modes ride along on the same request that
     // already fetches genres — no extra IGDB call, no throttle/cache change.
-    private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,first_release_date';
+    // T27/V32,V33: age_ratings (ESRB) + multiplayer_modes ride the same
+    // request for the same reason.
+    private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,'
+        .'first_release_date,age_ratings.category,age_ratings.rating,'
+        .'multiplayer_modes.campaigncoop,multiplayer_modes.dropin,multiplayer_modes.lancoop,'
+        .'multiplayer_modes.offlinecoop,multiplayer_modes.offlinemax,multiplayer_modes.onlinecoop,'
+        .'multiplayer_modes.onlinemax,multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline';
 
     /** §I discover browse sort vocabulary → IGDB order clauses. */
     private const BROWSE_SORTS = [

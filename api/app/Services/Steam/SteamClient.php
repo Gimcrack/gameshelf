@@ -2,6 +2,7 @@
 
 namespace App\Services\Steam;
 
+use App\Enums\DeckStatus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -147,5 +148,34 @@ class SteamClient
 
             return ($entry['success'] ?? false) ? ($entry['data']['name'] ?? null) : null;
         });
+    }
+
+    /**
+     * Steam Deck compatibility for an appid — undocumented, unauthenticated
+     * store endpoint (I.ext, T26). Refetched every call; the syncer decides
+     * caching/retention (V31 best-effort). `resolved_category` 0-3 maps
+     * onto DeckStatus; anything else is treated the same as "no answer".
+     */
+    public function deckCompatibility(int $appId): ?string
+    {
+        $response = Http::get(self::STORE_URL.'/saleaction/ajaxgetdeckappcompatibilityreport', [
+            'nAppID' => $appId,
+            'cc' => 'us',
+            'l' => 'english',
+        ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException('Steam deck compatibility request failed: '.$response->status());
+        }
+
+        $category = $response->json('results.resolved_category');
+
+        return match ($category) {
+            0 => DeckStatus::Unknown->value,
+            1 => DeckStatus::Unsupported->value,
+            2 => DeckStatus::Playable->value,
+            3 => DeckStatus::Verified->value,
+            default => null,
+        };
     }
 }

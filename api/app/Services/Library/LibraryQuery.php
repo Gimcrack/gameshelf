@@ -83,6 +83,13 @@ class LibraryQuery
             'game_modes' => $game->game_modes ?? [],
             'release_date' => $game->release_date?->toDateString(),
             'time_to_beat_minutes' => $game->time_to_beat_minutes,
+            // T27/V33: null = unrated | non-ESRB-market, never a placeholder string.
+            'esrb_rating' => $game->esrb_rating,
+            // T27/V32: null = not yet fetched, distinct from false.
+            'multiplayer' => $game->multiplayer,
+            'coop' => $game->coop,
+            'local_multiplayer' => $game->local_multiplayer,
+            'local_coop' => $game->local_coop,
             // No meta row means untouched — status defaults to unplayed.
             'status' => $meta?->status->value ?? 'unplayed',
             // V12: only a real meta row counts as user-declared for the
@@ -99,6 +106,8 @@ class LibraryQuery
                 'connection_status' => $owned->connection->status->value,
                 'playtime_minutes' => $owned->playtime_minutes,
                 'last_played_at' => $owned->last_played_at?->toIso8601String(),
+                // T26/V31: Steam-only, null = never successfully checked.
+                'deck_status' => $owned->deck_status?->value,
             ])->values()->all(),
             // V12: all-null playtime stays null (unknown), never 0.
             'total_playtime_minutes' => $knownPlaytimes->isEmpty() ? null : $knownPlaytimes->sum(),
@@ -137,6 +146,31 @@ class LibraryQuery
             ))
             ->when(isset($filters['game_mode']), fn (Collection $c) => $c->filter(
                 fn (array $e) => in_array($filters['game_mode'], $e['game_modes'], true),
+            ))
+            // T26/V31: matches any owning platform row whose deck_status is
+            // in the selected set; null (never checked) never matches.
+            ->when(isset($filters['deck_status']), fn (Collection $c) => $c->filter(
+                fn (array $e) => array_intersect(
+                    $filters['deck_status'],
+                    array_filter(array_column($e['platforms'], 'deck_status')),
+                ) !== [],
+            ))
+            ->when(isset($filters['esrb']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['esrb_rating'] === $filters['esrb'],
+            ))
+            // T27/V32: equality against the derived flag; null (best-effort
+            // miss) matches neither an explicit true nor false query.
+            ->when(isset($filters['multiplayer']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['multiplayer'] === $filters['multiplayer'],
+            ))
+            ->when(isset($filters['coop']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['coop'] === $filters['coop'],
+            ))
+            ->when(isset($filters['local_multiplayer']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['local_multiplayer'] === $filters['local_multiplayer'],
+            ))
+            ->when(isset($filters['local_coop']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['local_coop'] === $filters['local_coop'],
             ))
             // V29: manual collection membership, synthesized internally by
             // LibraryController::resolveCollection — never a public param.

@@ -1,8 +1,12 @@
+export type DeckStatus = 'unknown' | 'unsupported' | 'playable' | 'verified'
+
 export interface LibraryPlatform {
   platform: string
   connection_status: string
   playtime_minutes: number | null
   last_played_at: string | null
+  // T26/V31: Steam-only; null = never successfully checked.
+  deck_status: DeckStatus | null
 }
 
 export type GameStatus = 'unplayed' | 'playing' | 'finished' | 'abandoned'
@@ -18,6 +22,13 @@ export interface LibraryEntry {
   game_modes: string[]
   release_date: string | null
   time_to_beat_minutes: number | null
+  // T27/V33: null = unrated | non-ESRB-market.
+  esrb_rating: string | null
+  // T27/V32: null = not yet fetched, distinct from false.
+  multiplayer: boolean | null
+  coop: boolean | null
+  local_multiplayer: boolean | null
+  local_coop: boolean | null
   status: GameStatus
   status_declared: boolean
   tags: string[]
@@ -52,6 +63,12 @@ export interface LibraryFilters {
   playtimeMax?: number
   unplayed?: boolean
   includeHidden?: boolean
+  deckStatus?: DeckStatus[]
+  esrb?: string
+  multiplayer?: boolean
+  coop?: boolean
+  localMultiplayer?: boolean
+  localCoop?: boolean
 }
 
 /** Maps camelCase filter state to the API's snake_case query string. */
@@ -69,8 +86,25 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.playtimeMax !== undefined) params.set('playtime_max', String(filters.playtimeMax))
   if (filters.unplayed) params.set('unplayed', '1')
   if (filters.includeHidden) params.set('include_hidden', '1')
+  for (const status of filters.deckStatus ?? []) params.append('deck_status[]', status)
+  if (filters.esrb) params.set('esrb', filters.esrb)
+  if (filters.multiplayer) params.set('multiplayer', '1')
+  if (filters.coop) params.set('coop', '1')
+  if (filters.localMultiplayer) params.set('local_multiplayer', '1')
+  if (filters.localCoop) params.set('local_coop', '1')
 
   return params.toString()
+}
+
+const DECK_STATUS_LABELS: Record<DeckStatus, string> = {
+  unknown: 'Deck: unknown',
+  unsupported: 'Deck: unsupported',
+  playable: 'Deck: playable',
+  verified: 'Deck: verified'
+}
+
+export function deckStatusLabel(status: DeckStatus): string {
+  return DECK_STATUS_LABELS[status]
 }
 
 /**

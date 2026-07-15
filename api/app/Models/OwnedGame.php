@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeckStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'last_played_at',
     'install_status',
     'added_at',
+    'deck_status',
 ])]
 class OwnedGame extends Model
 {
@@ -27,6 +29,7 @@ class OwnedGame extends Model
         return [
             'last_played_at' => 'datetime',
             'added_at' => 'datetime',
+            'deck_status' => DeckStatus::class,
         ];
     }
 

@@ -63,6 +63,18 @@ class GameMatcherTest extends TestCase
             'keywords' => [['name' => 'physics']],
             'game_modes' => [['name' => 'Single player'], ['name' => 'Co-operative']],
             'first_release_date' => 1303171200,
+            'age_ratings' => [['category' => 1, 'rating' => 11]],
+            'multiplayer_modes' => [[
+                'campaigncoop' => true,
+                'dropin' => false,
+                'lancoop' => false,
+                'offlinecoop' => true,
+                'offlinemax' => 2,
+                'onlinecoop' => true,
+                'onlinemax' => 2,
+                'splitscreen' => true,
+                'splitscreenonline' => false,
+            ]],
         ];
     }
 
@@ -82,6 +94,71 @@ class GameMatcherTest extends TestCase
         $this->assertSame(['physics'], $game->keywords);
         $this->assertSame(['Single player', 'Co-operative'], $game->game_modes);
         $this->assertSame('2011-04-19', $game->release_date->toDateString());
+        // V33: category 1 = ESRB, rating id 11 = M.
+        $this->assertSame('M', $game->esrb_rating);
+        // V32: campaigncoop/onlinecoop/offlinecoop all present → true.
+        $this->assertTrue($game->multiplayer);
+        $this->assertTrue($game->coop);
+        // offlinecoop present → local_coop true.
+        $this->assertTrue($game->local_coop);
+        $this->assertTrue($game->local_multiplayer);
+    }
+
+    /**
+     * V32: splitscreen alone (no offlinecoop/lancoop) is local competitive,
+     * not local co-op — the distinction the invariant calls out explicitly.
+     */
+    public function test_splitscreen_alone_is_not_local_coop(): void
+    {
+        $this->fakeIgdb([[
+            'id' => 80,
+            'name' => 'Split Racer',
+            'genres' => [],
+            'multiplayer_modes' => [[
+                'campaigncoop' => false,
+                'dropin' => false,
+                'lancoop' => false,
+                'offlinecoop' => false,
+                'offlinemax' => 4,
+                'onlinecoop' => false,
+                'onlinemax' => 1,
+                'splitscreen' => true,
+                'splitscreenonline' => false,
+            ]],
+        ]]);
+        [, $game, $connection] = $this->provisionalOwnedGame('Split Racer', '80');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $game->refresh();
+        $this->assertFalse($game->local_coop);
+        $this->assertTrue($game->local_multiplayer);
+        $this->assertFalse($game->coop);
+        $this->assertTrue($game->multiplayer);
+    }
+
+    /**
+     * V32/V33: no age_ratings/multiplayer_modes data → esrb_rating stays
+     * null (unrated), multiplayer flags derive to false (IGDB successfully
+     * reported no multiplayer data), never a placeholder.
+     */
+    public function test_no_ratings_or_multiplayer_data_derives_null_and_false(): void
+    {
+        $this->fakeIgdb([[
+            'id' => 90,
+            'name' => 'Quiet Indie',
+            'genres' => [],
+        ]]);
+        [, $game, $connection] = $this->provisionalOwnedGame('Quiet Indie', '90');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $game->refresh();
+        $this->assertNull($game->esrb_rating);
+        $this->assertFalse($game->multiplayer);
+        $this->assertFalse($game->coop);
+        $this->assertFalse($game->local_multiplayer);
+        $this->assertFalse($game->local_coop);
     }
 
     /**

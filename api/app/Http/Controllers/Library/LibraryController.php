@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Library;
 
+use App\Enums\DeckStatus;
 use App\Enums\GameStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
@@ -33,7 +34,24 @@ class LibraryController extends Controller
             'collection' => ['sometimes', 'string', 'max:100'],
             // V28: hidden games excluded by default; this reveals them.
             'include_hidden' => ['sometimes', 'boolean'],
+            // T26: matches any owning platform row in the selected set.
+            'deck_status' => ['sometimes', 'array'],
+            'deck_status.*' => [Rule::enum(DeckStatus::class)],
+            // T27
+            'esrb' => ['sometimes', 'in:E,E10,T,M,AO,RP'],
+            'multiplayer' => ['sometimes', 'boolean'],
+            'coop' => ['sometimes', 'boolean'],
+            'local_multiplayer' => ['sometimes', 'boolean'],
+            'local_coop' => ['sometimes', 'boolean'],
         ]);
+
+        // T27: normalize to real booleans so LibraryQuery's strict equality
+        // against nullable game flags behaves correctly.
+        foreach (['multiplayer', 'coop', 'local_multiplayer', 'local_coop'] as $flag) {
+            if (isset($validated[$flag])) {
+                $validated[$flag] = filter_var($validated[$flag], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
 
         if (isset($validated['collection'])) {
             $validated = $this->resolveCollection($request, $validated);

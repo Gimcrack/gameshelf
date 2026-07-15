@@ -238,4 +238,67 @@ class SteamSyncJobTest extends TestCase
         // V16 only snapshots games that actually have playtime data.
         $this->assertDatabaseCount('playtime_snapshots', 0);
     }
+
+    /**
+     * T26/V31: deck compat fetched per Steam owned_game every sync.
+     */
+    public function test_fetches_deck_status_for_steam_games(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport*' => Http::response([
+                'results' => ['resolved_category' => 3],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseHas('owned_games', [
+            'platform_game_id' => '620',
+            'deck_status' => 'verified',
+        ]);
+    }
+
+    /**
+     * V31: a transient deck-compat failure never fails the sync, and never
+     * clobbers an already-known status with null — only a row that's never
+     * once succeeded stays null.
+     */
+    public function test_deck_status_fetch_failure_does_not_fail_sync_or_clobber_existing(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport*' => Http::sequence()
+                ->push(['results' => ['resolved_category' => 3]])
+                ->push(null, 500),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620', 'deck_status' => 'verified']);
+
+        $this->runSync($connection);
+
+        $this->assertSame('ok', $connection->fresh()->status->value);
+        $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620', 'deck_status' => 'verified']);
+    }
 }

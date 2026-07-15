@@ -38,6 +38,7 @@ class LibraryTest extends TestCase
         ?int $playtime = null,
         ?string $lastPlayed = null,
         string $added = '2026-01-01 00:00:00',
+        ?string $deckStatus = null,
     ): OwnedGame {
         return OwnedGame::create([
             'user_id' => $connection->user_id,
@@ -47,6 +48,7 @@ class LibraryTest extends TestCase
             'playtime_minutes' => $playtime,
             'last_played_at' => $lastPlayed,
             'added_at' => $added,
+            'deck_status' => $deckStatus,
         ]);
     }
 
@@ -341,5 +343,92 @@ class LibraryTest extends TestCase
         );
 
         $this->assertSame(['Hidden Game'], $titles);
+    }
+
+    /**
+     * T26/V31: deck_status rides on the platform entry, Steam-only.
+     */
+    public function test_platform_entry_carries_deck_status(): void
+    {
+        $this->own($this->connection('steam'), $this->game('Portal 2'), 10, deckStatus: 'verified');
+        $this->own($this->connection('gog'), $this->game('Untested'), 10);
+
+        $entries = collect($this->getJson('/api/library')->assertOk()->json())->keyBy('title');
+
+        $this->assertSame('verified', $entries['Portal 2']['platforms'][0]['deck_status']);
+        $this->assertNull($entries['Untested']['platforms'][0]['deck_status']);
+    }
+
+    /**
+     * T26: matches any owning platform row in the selected set; null
+     * (never checked) never matches.
+     */
+    public function test_filters_by_deck_status(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Verified'), 10, deckStatus: 'verified');
+        $this->own($steam, $this->game('Unsupported'), 10, deckStatus: 'unsupported');
+        $this->own($steam, $this->game('Never Checked'), 10);
+
+        $titles = array_column(
+            $this->getJson('/api/library?deck_status[]=verified&deck_status[]=playable')->json(),
+            'title',
+        );
+
+        $this->assertSame(['Verified'], $titles);
+    }
+
+    /**
+     * T27/V33: esrb_rating rides the entry; null = unrated.
+     */
+    public function test_entry_carries_esrb_rating(): void
+    {
+        $this->own($this->connection('steam'), $this->game('Rated', ['esrb_rating' => 'M']), 10);
+        $this->own($this->connection('steam'), $this->game('Unrated'), 10);
+
+        $entries = collect($this->getJson('/api/library')->assertOk()->json())->keyBy('title');
+
+        $this->assertSame('M', $entries['Rated']['esrb_rating']);
+        $this->assertNull($entries['Unrated']['esrb_rating']);
+    }
+
+    public function test_filters_by_esrb(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Mature', ['esrb_rating' => 'M']), 10);
+        $this->own($steam, $this->game('Everyone', ['esrb_rating' => 'E']), 10);
+
+        $titles = array_column($this->getJson('/api/library?esrb=M')->json(), 'title');
+
+        $this->assertSame(['Mature'], $titles);
+    }
+
+    /**
+     * T27/V32: null (best-effort miss) matches neither an explicit true nor
+     * false query.
+     */
+    public function test_filters_by_multiplayer_flags(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('Coop Game', ['multiplayer' => true, 'coop' => true, 'local_coop' => true]), 10);
+        $this->own($steam, $this->game('Solo Game', ['multiplayer' => false, 'coop' => false]), 10);
+        $this->own($steam, $this->game('Unchecked Game'), 10);
+
+        $this->assertSame(
+            ['Coop Game'],
+            array_column($this->getJson('/api/library?multiplayer=1')->json(), 'title'),
+        );
+        $this->assertSame(
+            ['Coop Game'],
+            array_column($this->getJson('/api/library?coop=1')->json(), 'title'),
+        );
+        $this->assertSame(
+            ['Coop Game'],
+            array_column($this->getJson('/api/library?local_coop=1')->json(), 'title'),
+        );
+        $this->assertSame(
+            ['Solo Game'],
+            array_column($this->getJson('/api/library?multiplayer=0')->json(), 'title'),
+        );
     }
 }

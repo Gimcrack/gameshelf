@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { Ref } from 'vue'
-import { formatPlaytime, hasDisconnectedPlatform, type GameStatus, type LibraryEntry } from '../../utils/library'
+import {
+  deckStatusLabel,
+  formatPlaytime,
+  hasDisconnectedPlatform,
+  type GameStatus,
+  type LibraryEntry
+} from '../../utils/library'
 
 const route = useRoute()
 const gameId = computed(() => Number(route.params.id))
@@ -121,8 +127,42 @@ async function onSave(): Promise<void> {
             :class="{ 'bg-amber-950/60 text-amber-300': p.connection_status === 'disconnected' }"
           >
             {{ p.platform }} · {{ formatPlaytime(p.playtime_minutes) }}
+            <span v-if="p.deck_status"> · {{ deckStatusLabel(p.deck_status) }}</span>
           </li>
         </ul>
+
+        <div v-if="entry.esrb_rating || entry.multiplayer || entry.coop" class="mb-4 flex flex-wrap gap-1.5">
+          <span
+            v-if="entry.esrb_rating"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            ESRB {{ entry.esrb_rating }}
+          </span>
+          <span
+            v-if="entry.multiplayer"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            Multiplayer
+          </span>
+          <span
+            v-if="entry.coop"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            Co-op
+          </span>
+          <span
+            v-if="entry.local_multiplayer"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            Local multiplayer
+          </span>
+          <span
+            v-if="entry.local_coop"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            Local co-op
+          </span>
+        </div>
 
         <dl class="mb-6 space-y-2 text-xs text-slate-400">
           <div v-if="entry.genres.length">

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import type { LibraryFilters, LibrarySort } from '../utils/library'
+import type { DeckStatus, LibraryFilters, LibrarySort } from '../utils/library'
+
+const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'verified']
 
 const { user, logout, fetchUser } = useAuth()
 const { entries, pending, error, fetchLibrary, removeManual, updateMeta } = useLibrary()
@@ -18,6 +20,12 @@ const keyword = ref('')
 const gameMode = ref('')
 const unplayed = ref(false)
 const showHidden = ref(false)
+const deckStatuses = ref<DeckStatus[]>([])
+const esrb = ref('')
+const multiplayer = ref(false)
+const coop = ref(false)
+const localMultiplayer = ref(false)
+const localCoop = ref(false)
 
 const filters = computed<LibraryFilters>(() => ({
   sort: sort.value,
@@ -28,7 +36,13 @@ const filters = computed<LibraryFilters>(() => ({
   ...(keyword.value.trim() ? { keyword: keyword.value.trim() } : {}),
   ...(gameMode.value.trim() ? { gameMode: gameMode.value.trim() } : {}),
   ...(unplayed.value ? { unplayed: true } : {}),
-  ...(showHidden.value ? { includeHidden: true } : {})
+  ...(showHidden.value ? { includeHidden: true } : {}),
+  ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
+  ...(esrb.value ? { esrb: esrb.value } : {}),
+  ...(multiplayer.value ? { multiplayer: true } : {}),
+  ...(coop.value ? { coop: true } : {}),
+  ...(localMultiplayer.value ? { localMultiplayer: true } : {}),
+  ...(localCoop.value ? { localCoop: true } : {})
 }))
 
 onMounted(async () => {
@@ -167,6 +181,44 @@ async function onLogout(): Promise<void> {
       <label class="flex items-center gap-2 pb-1.5">
         <input v-model="showHidden" type="checkbox" class="accent-teal-500" />
         Show hidden
+      </label>
+      <label class="flex flex-col gap-1">
+        ESRB
+        <select
+          v-model="esrb"
+          class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
+        >
+          <option value="">Any</option>
+          <option value="RP">RP</option>
+          <option value="E">E</option>
+          <option value="E10">E10+</option>
+          <option value="T">T</option>
+          <option value="M">M</option>
+          <option value="AO">AO</option>
+        </select>
+      </label>
+      <fieldset class="flex flex-col gap-1">
+        <legend class="mb-1">Steam Deck</legend>
+        <label v-for="status in DECK_STATUSES" :key="status" class="flex items-center gap-2 pb-0.5">
+          <input v-model="deckStatuses" type="checkbox" :value="status" class="accent-teal-500" />
+          {{ status }}
+        </label>
+      </fieldset>
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="multiplayer" type="checkbox" class="accent-teal-500" />
+        Multiplayer
+      </label>
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="coop" type="checkbox" class="accent-teal-500" />
+        Co-op
+      </label>
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="localMultiplayer" type="checkbox" class="accent-teal-500" />
+        Local multiplayer
+      </label>
+      <label class="flex items-center gap-2 pb-1.5">
+        <input v-model="localCoop" type="checkbox" class="accent-teal-500" />
+        Local co-op
       </label>
     </section>
 

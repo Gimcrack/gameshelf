@@ -76,19 +76,29 @@ class SteamSyncer
             'title' => $steamGame['name'] ?? "Steam app {$platformGameId}",
         ])->id;
 
+        $attributes = [
+            'user_id' => $connection->user_id,
+            'game_id' => $gameId,
+            'playtime_minutes' => $playtime,
+            'last_played_at' => $lastPlayed,
+            'added_at' => $existing?->added_at ?? $capturedAt,
+        ];
+
+        // V31: best-effort, refetched every sync. A transient failure omits
+        // the key entirely rather than overwriting an already-known status
+        // with null — only a row that's never once succeeded stays null.
+        $deckStatus = $this->deckStatus($platformGameId);
+        if ($deckStatus !== null) {
+            $attributes['deck_status'] = $deckStatus;
+        }
+
         // V10: keyed on (platform_connection_id, platform_game_id) — upsert only.
         $ownedGame = OwnedGame::updateOrCreate(
             [
                 'platform_connection_id' => $connection->id,
                 'platform_game_id' => $platformGameId,
             ],
-            [
-                'user_id' => $connection->user_id,
-                'game_id' => $gameId,
-                'playtime_minutes' => $playtime,
-                'last_played_at' => $lastPlayed,
-                'added_at' => $existing?->added_at ?? $capturedAt,
-            ],
+            $attributes,
         );
 
         // V16: snapshot every sync — only for games with actual playtime data.
@@ -98,6 +108,20 @@ class SteamSyncer
                 'playtime_minutes' => $playtime,
                 'captured_at' => $capturedAt,
             ]);
+        }
+    }
+
+    /**
+     * V31: mirrors V11/timeToBeat tolerance — failure never fails sync.
+     */
+    private function deckStatus(string $appId): ?string
+    {
+        try {
+            return $this->client->deckCompatibility((int) $appId);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
         }
     }
 }

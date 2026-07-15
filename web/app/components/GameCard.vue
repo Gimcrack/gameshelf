@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  deckStatusLabel,
   formatPlaytime,
   hasDisconnectedPlatform,
   hasManualEntry,
@@ -60,6 +61,14 @@ function onAddToCollection(): void {
           }"
         >
           {{ p.platform }}<span v-if="p.connection_status === 'disconnected'"> · disconnected</span>
+        </li>
+        <li
+          v-for="p in entry.platforms.filter((p) => p.deck_status)"
+          :key="`${p.platform}-deck`"
+          class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400"
+          :class="{ 'bg-teal-950/60 text-teal-300': p.deck_status === 'verified' }"
+        >
+          {{ deckStatusLabel(p.deck_status!) }}
         </li>
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
