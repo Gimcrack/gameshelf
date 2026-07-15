@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import type { DeckStatus, LibraryFacets } from '../utils/library'
+import { computed } from 'vue'
+import type { DeckStatus, LibraryFacets } from '~/utils/library'
+import { excludeDedicatedGameModes } from '~/utils/facets'
 
-defineProps<{ facets: LibraryFacets }>()
+const props = defineProps<{ facets: LibraryFacets }>()
+
+const gameModeOptions = computed(() => excludeDedicatedGameModes(props.facets.game_modes))
 
 const platforms = defineModel<string[]>('platforms', { default: () => [] })
 const genres = defineModel<string[]>('genres', { default: () => [] })
@@ -42,7 +46,7 @@ const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'veri
     <FacetFilter v-model="genres" label="Genre" :options="facets.genres" />
     <FacetFilter v-model="themes" label="Theme" :options="facets.themes" />
     <FacetFilter v-model="keywords" label="Keyword" :options="facets.keywords" />
-    <FacetFilter v-model="gameModes" label="Game mode" :options="facets.game_modes" />
+    <FacetFilter v-model="gameModes" label="Game mode" :options="gameModeOptions" />
 
     <fieldset class="flex flex-col gap-1">
       <legend class="mb-1 text-slate-300">Steam Deck</legend>
