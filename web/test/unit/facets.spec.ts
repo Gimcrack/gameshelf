@@ -1,18 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { facetControlKind, filterFacetOptions } from '../../app/utils/facets'
-
-describe('facetControlKind', () => {
-  it('uses a checkbox list for five or fewer options', () => {
-    expect(facetControlKind(0)).toBe('checkbox')
-    expect(facetControlKind(1)).toBe('checkbox')
-    expect(facetControlKind(5)).toBe('checkbox')
-  })
-
-  it('uses a combobox for more than five options', () => {
-    expect(facetControlKind(6)).toBe('combobox')
-    expect(facetControlKind(100)).toBe('combobox')
-  })
-})
+import { filterFacetOptions } from '../../app/utils/facets'
 
 describe('filterFacetOptions', () => {
   const options = ['Adventure', 'Role-playing (RPG)', 'Shooter', 'Turn-based strategy (TBS)']

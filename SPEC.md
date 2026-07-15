@@ -32,7 +32,7 @@ Source: `design-doc.md` v0.1.
 - Auth: own accounts — email/password + Sanctum tokens. Steam OpenID ⊥ identity (connection only).
 - Hosting: Laravel Forge + single VPS (API, queue, Redis, DB). Nuxt SPA static via same box | CDN.
 - Nuxt mode: SPA (`ssr: false`). All views behind auth, no SEO need. Holds in Nuxt 4 — upgrade ⊥ drop `ssr: false`.
-- FE facet filter > 5 options → searchable multi-select combobox (`@headlessui/vue` Combobox), ≤ 5 → checkbox list. Added amend 2026-07-15 → T33.
+- FE facet filters: ∀ render via FacetFilter → searchable multi-select combobox (`@headlessui/vue` Combobox), regardless of option count. Added amend 2026-07-15 → T33 (was > 5 → combobox, ≤ 5 → checkbox); threshold dropped amend 2026-07-15 → T35.
 - Local dev topology: API via Herd → `http://gameshelf.test` (Sites symlink → `api/`), FE `nuxt dev` :3000, `web/.env` NUXT_PUBLIC_API_BASE=http://gameshelf.test. API unreachable → browser reports CORS-shaped error ∴ check server up before touching CORS config. Laravel CORS = framework defaults (ACAO *), no cors.php published.
 
 ## §I interfaces
@@ -165,6 +165,7 @@ T31|x|"sync all IGDB" bulk refresh: POST /api/library/sync-igdb → 202 dispatch
 T32|x|fix T31 timeout: SyncLibraryIgdb → fan-out orchestrator, new per-game RefreshGameIgdb job + per-connection match job, RateLimited/Redis-throttle middleware on IGDB budget|V38,V39,I.api
 T33|x|facet combobox: add `@headlessui/vue`, FacetCombobox component (multi-select, searchable), LibraryFilterSidebar renders combobox when facet > 5 options else checkbox list; re-enable commented-out keywords facet via combobox|§C.facet-combobox,I.api
 T34|.|dedupe multiplayer/co-op options: exclude game_modes values duplicating V32 bool filters from sidebar game-mode list|V40,V32
+T35|x|∀ facets → combobox: FacetFilter always renders FacetCombobox — drop `facetControlKind` threshold + checkbox branch + threshold tests; sidebar untouched (∀ 5 facets already route FacetFilter)|§C.facet-combobox
 
 ## §B bugs
 
