@@ -29,7 +29,7 @@ function onAddToCollection(): void {
     class="group flex flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900 transition duration-200 hover:-translate-y-1 hover:border-teal-400/60 hover:shadow-lg hover:shadow-teal-500/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     :class="{ 'opacity-60 saturate-50': disconnected }"
   >
-    <div class="relative">
+    <NuxtLink :to="`/games/${entry.id}`" class="relative block">
       <img
         v-if="entry.cover_url"
         :src="entry.cover_url"
@@ -43,9 +43,11 @@ function onAddToCollection(): void {
       >
         {{ entry.title }}
       </div>
-    </div>
+    </NuxtLink>
     <div class="px-3 pb-3 pt-2.5">
-      <h3 class="mb-1 text-sm font-semibold leading-snug text-slate-100">{{ entry.title }}</h3>
+      <h3 class="mb-1 text-sm font-semibold leading-snug text-slate-100">
+        <NuxtLink :to="`/games/${entry.id}`" class="hover:text-teal-300">{{ entry.title }}</NuxtLink>
+      </h3>
       <p class="mb-1.5 text-xs text-teal-300/90">{{ playtimeLabel }}</p>
       <ul class="mb-1.5 flex flex-wrap gap-1.5 p-0">
         <li

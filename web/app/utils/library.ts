@@ -5,6 +5,8 @@ export interface LibraryPlatform {
   last_played_at: string | null
 }
 
+export type GameStatus = 'unplayed' | 'playing' | 'finished' | 'abandoned'
+
 export interface LibraryEntry {
   id: number
   igdb_id: number | null
@@ -15,10 +17,23 @@ export interface LibraryEntry {
   keywords: string[]
   game_modes: string[]
   release_date: string | null
+  time_to_beat_minutes: number | null
+  status: GameStatus
+  status_declared: boolean
+  tags: string[]
+  notes: string | null
+  rating: number | null
   platforms: LibraryPlatform[]
   total_playtime_minutes: number | null
   last_played_at: string | null
   added_at: string | null
+}
+
+export interface LibraryMetaUpdate {
+  status?: GameStatus
+  tags?: string[]
+  notes?: string | null
+  rating?: number | null
 }
 
 export type LibrarySort = 'alpha' | 'playtime' | 'last_played' | 'added'

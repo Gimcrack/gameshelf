@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Library;
 
 use App\Enums\GameStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Game;
 use App\Services\Library\LibraryQuery;
 use App\Services\Library\SystemCollections;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 class LibraryController extends Controller
 {
@@ -36,6 +38,19 @@ class LibraryController extends Controller
         }
 
         return response()->json($library->forUser($request->user(), $validated));
+    }
+
+    /**
+     * I.api: GET /api/library/:game_id — 404 if the game isn't in the
+     * caller's library (not just "doesn't exist").
+     */
+    public function show(Request $request, Game $game, LibraryQuery $library): JsonResponse
+    {
+        $entry = $library->forGame($request->user(), $game);
+
+        abort_if($entry === null, Response::HTTP_NOT_FOUND);
+
+        return response()->json($entry);
     }
 
     /**

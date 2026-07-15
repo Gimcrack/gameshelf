@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
 
     Route::get('/library', [LibraryController::class, 'index']);
+    Route::get('/library/{game}', [LibraryController::class, 'show']);
     Route::post('/library', [ManualEntryController::class, 'store']);
     Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);

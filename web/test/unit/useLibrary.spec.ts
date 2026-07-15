@@ -52,4 +52,27 @@ describe('useLibrary', () => {
 
     expect(error.value).toBe('Request failed. Please try again.')
   })
+
+  it('fetches a single game by id', async () => {
+    const payload = { id: 5, title: 'Portal 2' }
+    apiFetchMock.mockResolvedValue(payload)
+    const { fetchGame } = useLibrary()
+
+    const result = await fetchGame(5)
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/library/5')
+    expect(result).toEqual(payload)
+  })
+
+  it('puts meta updates to the game meta endpoint', async () => {
+    apiFetchMock.mockResolvedValue({})
+    const { updateMeta } = useLibrary()
+
+    await updateMeta(5, { status: 'playing', tags: ['co-op'], notes: null, rating: 4 })
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/library/5/meta', {
+      method: 'PUT',
+      body: { status: 'playing', tags: ['co-op'], notes: null, rating: 4 }
+    })
+  })
 })

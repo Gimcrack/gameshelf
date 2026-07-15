@@ -258,4 +258,48 @@ class LibraryTest extends TestCase
             ->getJson('/api/library')
             ->assertUnauthorized();
     }
+
+    /**
+     * I.api T24: show returns the same entry shape as the list, for one game.
+     */
+    public function test_show_returns_single_entry(): void
+    {
+        $game = $this->game('Portal 2', ['themes' => ['Sci-fi']]);
+        $this->own($this->connection('steam'), $game, 1200);
+        $this->own($this->connection('gog'), $game, 60);
+
+        $response = $this->getJson("/api/library/{$game->id}")->assertOk();
+
+        $this->assertSame('Portal 2', $response->json('title'));
+        $this->assertSame(1260, $response->json('total_playtime_minutes'));
+        $platforms = array_column($response->json('platforms'), 'platform');
+        sort($platforms);
+        $this->assertSame(['gog', 'steam'], $platforms);
+    }
+
+    public function test_show_404_when_not_owned(): void
+    {
+        $game = $this->game('Not Mine');
+
+        $this->getJson("/api/library/{$game->id}")->assertNotFound();
+    }
+
+    public function test_show_404_for_other_users_game(): void
+    {
+        $other = PlatformConnection::factory()->create();
+        $game = $this->game('Theirs');
+        $this->own($other, $game, 10);
+
+        $this->getJson("/api/library/{$game->id}")->assertNotFound();
+    }
+
+    public function test_show_requires_auth(): void
+    {
+        $game = $this->game('Portal 2');
+        $this->own($this->connection('steam'), $game, 10);
+
+        $this->withHeaders(['Authorization' => ''])
+            ->getJson("/api/library/{$game->id}")
+            ->assertUnauthorized();
+    }
 }

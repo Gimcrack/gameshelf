@@ -2,6 +2,7 @@
 
 namespace App\Services\Library;
 
+use App\Models\Game;
 use App\Models\OwnedGame;
 use App\Models\User;
 use App\Models\UserGameMeta;
@@ -37,6 +38,29 @@ class LibraryQuery
         return $this->sort($this->filter($entries, $filters), $filters)
             ->values()
             ->all();
+    }
+
+    /**
+     * I.api: GET /api/library/:game_id — same entry shape as the list, for
+     * one game. Null when the caller owns no row for it (404 upstream).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function forGame(User $user, Game $game): ?array
+    {
+        $group = OwnedGame::query()
+            ->where('user_id', $user->id)
+            ->where('game_id', $game->id)
+            ->with(['game', 'connection'])
+            ->get();
+
+        if ($group->isEmpty()) {
+            return null;
+        }
+
+        $meta = UserGameMeta::where('user_id', $user->id)->where('game_id', $game->id)->first();
+
+        return $this->entry($group, $meta);
     }
 
     /**

@@ -1,7 +1,12 @@
 import { ref, type Ref } from 'vue'
 import { useState } from '#app'
 import { apiFetch, type ApiError } from '../utils/api'
-import { buildLibraryQuery, type LibraryEntry, type LibraryFilters } from '../utils/library'
+import {
+  buildLibraryQuery,
+  type LibraryEntry,
+  type LibraryFilters,
+  type LibraryMetaUpdate
+} from '../utils/library'
 
 export function useLibrary() {
   const entries: Ref<LibraryEntry[]> = useState<LibraryEntry[]>('library-entries', () => [])
@@ -27,5 +32,15 @@ export function useLibrary() {
     await apiFetch(`/api/library/${gameId}/manual`, { method: 'DELETE' })
   }
 
-  return { entries, pending, error, fetchLibrary, removeManual }
+  /** I.api T24: GET /api/library/:game_id — same entry shape as the list. */
+  async function fetchGame(gameId: number): Promise<LibraryEntry> {
+    return apiFetch<LibraryEntry>(`/api/library/${gameId}`)
+  }
+
+  /** I.api: PUT /api/library/:game_id/meta — partial upsert (V6). */
+  async function updateMeta(gameId: number, payload: LibraryMetaUpdate): Promise<void> {
+    await apiFetch(`/api/library/${gameId}/meta`, { method: 'PUT', body: payload })
+  }
+
+  return { entries, pending, error, fetchLibrary, removeManual, fetchGame, updateMeta }
 }
