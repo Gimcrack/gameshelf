@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildGogAuthUrl,
+  buildXboxAuthUrl,
   connectionStatusLabel,
   extractGogCode,
   GOG_REDIRECT_URI,
-  hasGogClientId
+  hasGogClientId,
+  hasXboxClientId
 } from '../../app/utils/connections'
 
 describe('buildGogAuthUrl', () => {
@@ -51,6 +53,29 @@ describe('hasGogClientId', () => {
     expect(hasGogClientId('')).toBe(false)
     expect(hasGogClientId('   ')).toBe(false)
     expect(hasGogClientId('46899977096215655')).toBe(true)
+  })
+})
+
+describe('buildXboxAuthUrl', () => {
+  it('builds the Microsoft login URL with the public client id and given redirect_uri', () => {
+    const url = new URL(
+      buildXboxAuthUrl('11112222-3333-4444-5555-666677778888', 'https://gamebower.com/connections/xbox/callback')
+    )
+
+    expect(url.origin).toBe('https://login.microsoftonline.com')
+    expect(url.pathname).toBe('/consumers/oauth2/v2.0/authorize')
+    expect(url.searchParams.get('client_id')).toBe('11112222-3333-4444-5555-666677778888')
+    expect(url.searchParams.get('redirect_uri')).toBe('https://gamebower.com/connections/xbox/callback')
+    expect(url.searchParams.get('response_type')).toBe('code')
+    expect(url.searchParams.get('scope')).toBe('XboxLive.signin offline_access')
+  })
+})
+
+describe('hasXboxClientId', () => {
+  it('is false for empty or whitespace-only, true otherwise', () => {
+    expect(hasXboxClientId('')).toBe(false)
+    expect(hasXboxClientId('   ')).toBe(false)
+    expect(hasXboxClientId('11112222-3333-4444-5555-666677778888')).toBe(true)
   })
 })
 

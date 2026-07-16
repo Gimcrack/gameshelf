@@ -1,6 +1,6 @@
 export interface PlatformConnection {
   id: number
-  platform: 'steam' | 'gog'
+  platform: 'steam' | 'gog' | 'xbox'
   external_account_id: string
   last_synced_at: string | null
   status: 'pending' | 'syncing' | 'ok' | 'error' | 'error_private' | 'disconnected'
@@ -49,6 +49,34 @@ export function extractGogCode(input: string): string {
  * silently building a broken authorize URL that dead-ends at GOG's server.
  */
 export function hasGogClientId(clientId: string): boolean {
+  return clientId.trim() !== ''
+}
+
+/**
+ * T63/I.xbox: unlike GOG (community-fixed redirect target, T6), we control
+ * our own Azure AD app registration — the FE picks its own redirect_uri,
+ * which the backend echoes back verbatim in the token exchange. That means
+ * a real redirect flow works here, no manual code paste needed (V60: real
+ * OAuth, same trust class as Steam/GOG).
+ */
+export const XBOX_CALLBACK_PATH = '/connections/xbox/callback'
+
+export function buildXboxAuthUrl(clientId: string, redirectUri: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'XboxLive.signin offline_access'
+  })
+
+  return `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?${params.toString()}`
+}
+
+/**
+ * T63: NUXT_PUBLIC_XBOX_CLIENT_ID defaults to '' when unset — mirrors
+ * hasGogClientId (B17/V54): fail loud locally rather than a dead link.
+ */
+export function hasXboxClientId(clientId: string): boolean {
   return clientId.trim() !== ''
 }
 

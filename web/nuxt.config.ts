@@ -21,7 +21,9 @@ export default defineNuxtConfig({
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
       // Public OAuth identifier, not a secret — used to build the GOG login URL.
-      gogClientId: process.env.NUXT_PUBLIC_GOG_CLIENT_ID || ''
+      gogClientId: process.env.NUXT_PUBLIC_GOG_CLIENT_ID || '',
+      // Public OAuth identifier, not a secret — used to build the Xbox login URL (T63).
+      xboxClientId: process.env.NUXT_PUBLIC_XBOX_CLIENT_ID || ''
     }
   }
 })

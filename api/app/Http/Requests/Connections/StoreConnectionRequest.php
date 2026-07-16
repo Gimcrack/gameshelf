@@ -17,7 +17,7 @@ class StoreConnectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'platform' => ['required', 'string', 'in:steam,gog'],
+            'platform' => ['required', 'string', 'in:steam,gog,xbox'],
             'steam_id' => [
                 'exclude_unless:platform,steam',
                 'required_without:vanity_url',
@@ -30,8 +30,12 @@ class StoreConnectionRequest extends FormRequest
                 'string',
                 'max:255',
             ],
-            // GOG OAuth authorization code, exchanged server-side (I.gog).
-            'code' => ['exclude_unless:platform,gog', 'required', 'string'],
+            // GOG/Xbox OAuth authorization code, exchanged server-side (I.gog/I.xbox).
+            'code' => ['exclude_unless:platform,gog,xbox', 'required', 'string'],
+            // I.xbox: we control the Azure AD app registration, so (unlike
+            // GOG) the FE picks its own redirect_uri — it must be echoed
+            // back verbatim in the token exchange (T63).
+            'redirect_uri' => ['exclude_unless:platform,xbox', 'required', 'url'],
         ];
     }
 
@@ -41,9 +45,10 @@ class StoreConnectionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'platform.in' => 'Only Steam and GOG connections are supported right now.',
+            'platform.in' => 'Only Steam, GOG, and Xbox connections are supported right now.',
             'steam_id.required_without' => 'Provide either a SteamID64 or a vanity URL name.',
-            'code.required' => 'Provide the GOG login code to connect a GOG account.',
+            'code.required' => 'Provide the login code to connect this account.',
+            'redirect_uri.required' => 'Missing OAuth redirect URI.',
         ];
     }
 }

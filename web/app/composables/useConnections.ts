@@ -6,6 +6,7 @@ import type { PlatformConnection } from '../utils/connections'
 export type ConnectPayload =
   | { platform: 'steam'; steam_id?: string; vanity_url?: string }
   | { platform: 'gog'; code: string }
+  | { platform: 'xbox'; code: string; redirect_uri: string }
 
 export interface SteamIdentity {
   steam_id: string

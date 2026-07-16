@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import {
   buildGogAuthUrl,
+  buildXboxAuthUrl,
   connectionStatusLabel,
   extractGogCode,
-  hasGogClientId
+  hasGogClientId,
+  hasXboxClientId,
+  XBOX_CALLBACK_PATH
 } from '../utils/connections'
 import type { ApiError } from '../utils/api'
 import type { SteamIdentity } from '../composables/useConnections'
 
 const config = useRuntimeConfig()
+const route = useRoute()
+const router = useRouter()
 const {
   connections,
   pending,
@@ -36,12 +41,36 @@ const wishlistSyncError = ref('')
 
 const gogAuthUrl = computed(() => buildGogAuthUrl(config.public.gogClientId as string))
 const gogClientIdConfigured = computed(() => hasGogClientId(config.public.gogClientId as string))
+// T63/I.xbox: real redirect flow (we control the Azure AD redirect_uri,
+// unlike GOG's manual-paste workaround) — same-tab navigation, Microsoft
+// redirects back to our own callback page to finish the connection.
+const xboxAuthUrl = computed(() =>
+  buildXboxAuthUrl(
+    config.public.xboxClientId as string,
+    `${window.location.origin}${XBOX_CALLBACK_PATH}`
+  )
+)
+const xboxClientIdConfigured = computed(() => hasXboxClientId(config.public.xboxClientId as string))
 const hasSteam = computed(() =>
   connections.value.some((c) => c.platform === 'steam' && c.status !== 'disconnected')
 )
 const hasGog = computed(() =>
   connections.value.some((c) => c.platform === 'gog' && c.status !== 'disconnected')
 )
+const hasXbox = computed(() =>
+  connections.value.some((c) => c.platform === 'xbox' && c.status !== 'disconnected')
+)
+
+// T63: banner for the redirect back from /connections/xbox/callback.
+const xboxCallbackMessage = ref('')
+const xboxCallbackError = ref('')
+if (route.query.xbox_connected) {
+  xboxCallbackMessage.value = 'Xbox account connected — syncing now.'
+  router.replace({ query: { ...route.query, xbox_connected: undefined } })
+} else if (route.query.xbox_error) {
+  xboxCallbackError.value = 'Xbox login failed. Try connecting again.'
+  router.replace({ query: { ...route.query, xbox_error: undefined } })
+}
 
 onMounted(() => fetchConnections())
 
@@ -111,6 +140,9 @@ async function onSyncWishlist(): Promise<void> {
 <template>
   <section class="rounded-xl border border-slate-800 bg-slate-900 p-6">
     <h2 class="mb-4 font-semibold text-teal-300">Connected services</h2>
+
+    <p v-if="xboxCallbackMessage" class="mb-3 text-sm text-teal-300">{{ xboxCallbackMessage }}</p>
+    <p v-if="xboxCallbackError" class="mb-3 text-sm text-rose-400">{{ xboxCallbackError }}</p>
 
     <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md border border-slate-800 bg-slate-950 p-3">
       <button
@@ -183,7 +215,7 @@ async function onSyncWishlist(): Promise<void> {
       Disconnecting keeps your games — reconnect any time to resume syncing.
     </p>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-3">
       <div v-if="!hasSteam" class="rounded-md border border-slate-800 p-4">
         <h3 class="mb-2 text-sm font-semibold text-slate-100">Connect Steam</h3>
 
@@ -263,6 +295,20 @@ async function onSyncWishlist(): Promise<void> {
             Connect GOG
           </button>
         </template>
+      </div>
+
+      <div v-if="!hasXbox" class="rounded-md border border-slate-800 p-4">
+        <h3 class="mb-2 text-sm font-semibold text-slate-100">Connect Xbox</h3>
+        <p v-if="!xboxClientIdConfigured" class="text-xs text-rose-400">
+          Xbox login unavailable (missing client id).
+        </p>
+        <a
+          v-else
+          :href="xboxAuthUrl"
+          class="inline-block rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400"
+        >
+          Log in with Microsoft
+        </a>
       </div>
     </div>
 

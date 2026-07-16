@@ -10,6 +10,7 @@ use App\Jobs\SyncConnection;
 use App\Models\PlatformConnection;
 use App\Services\Gog\GogClient;
 use App\Services\Steam\SteamClient;
+use App\Services\Xbox\XboxClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -36,6 +37,7 @@ class ConnectionController extends Controller
         $connection = match ($validated['platform']) {
             'steam' => $this->connectSteam($request, $validated),
             'gog' => $this->connectGog($request, $validated),
+            'xbox' => $this->connectXbox($request, $validated),
         };
 
         SyncConnection::dispatch($connection->id);
@@ -115,6 +117,40 @@ class ConnectionController extends Controller
         return $request->user()->platformConnections()->create([
             'platform' => 'gog',
             'external_account_id' => $tokens['user_id'],
+            'auth_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'token_expires_at' => now()->addSeconds($tokens['expires_in']),
+            'status' => ConnectionStatus::Pending,
+        ]);
+    }
+
+    /**
+     * I.xbox/V60: exchange code → MS tokens → XBL/XSTS hop for the xuid,
+     * confirming the whole chain works before the connection row exists.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function connectXbox(StoreConnectionRequest $request, array $validated): PlatformConnection
+    {
+        $tokens = app(XboxClient::class)->exchangeCode($validated['code'], $validated['redirect_uri']);
+
+        if ($tokens === null) {
+            throw ValidationException::withMessages([
+                'code' => ['Microsoft rejected that login code. Log in again and retry.'],
+            ]);
+        }
+
+        $credentials = app(XboxClient::class)->exchangeForXsts($tokens['access_token']);
+
+        if ($credentials === null) {
+            throw ValidationException::withMessages([
+                'code' => ['Could not authorize with Xbox Live. Log in again and retry.'],
+            ]);
+        }
+
+        return $request->user()->platformConnections()->create([
+            'platform' => 'xbox',
+            'external_account_id' => $credentials['xuid'],
             'auth_token' => $tokens['access_token'],
             'refresh_token' => $tokens['refresh_token'],
             'token_expires_at' => now()->addSeconds($tokens['expires_in']),

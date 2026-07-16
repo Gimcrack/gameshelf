@@ -6,6 +6,7 @@ use App\Services\Gog\GogClient;
 use App\Services\Igdb\IgdbClient;
 use App\Services\Igdb\TwitchAuth;
 use App\Services\Steam\SteamClient;
+use App\Services\Xbox\XboxClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
             return new GogClient(
                 (string) config('services.gog.client_id'),
                 (string) config('services.gog.client_secret'),
+            );
+        });
+
+        $this->app->bind(XboxClient::class, function () {
+            return new XboxClient(
+                (string) config('services.xbox.client_id'),
+                (string) config('services.xbox.client_secret'),
             );
         });
 
