@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // T28: must precede /library/{game} — otherwise "facets" binds as {game}.
     Route::get('/library/facets', [LibraryController::class, 'facets']);
     Route::get('/library/{game}', [LibraryController::class, 'show']);
+    Route::get('/library/{game}/achievements', [LibraryController::class, 'achievements']);
     Route::post('/library', [ManualEntryController::class, 'store']);
     Route::delete('/library/{game}/manual', [ManualEntryController::class, 'destroy']);
     Route::put('/library/{game}/meta', [GameMetaController::class, 'update']);

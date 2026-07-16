@@ -94,6 +94,20 @@ class LibraryController extends Controller
     }
 
     /**
+     * I.api T70: GET /api/library/:game_id/achievements — 404 when the game
+     * has no achievement-capable owning row (not in library, gog/manual-only
+     * V64, or a wishlist/none union entry V67).
+     */
+    public function achievements(Request $request, Game $game, LibraryQuery $library): JsonResponse
+    {
+        $achievements = $library->achievementsForGame($request->user(), $game);
+
+        abort_if($achievements === null, Response::HTTP_NOT_FOUND);
+
+        return response()->json(['achievements' => $achievements]);
+    }
+
+    /**
      * A collection param is either a system slug (kept for LibraryQuery) or
      * a custom preset id whose saved filters merge in — explicit query
      * params win over the preset.

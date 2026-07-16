@@ -3,7 +3,9 @@
 namespace App\Services\Library;
 
 use App\Models\Game;
+use App\Models\GameAchievementDef;
 use App\Models\OwnedGame;
+use App\Models\OwnedGameAchievement;
 use App\Models\User;
 use App\Models\UserGameMeta;
 use App\Models\WishlistItem;
@@ -27,6 +29,12 @@ class LibraryQuery
      * (fully playable, T60).
      */
     private const OWNED_STATUSES = ['owned', 'free', 'shared'];
+
+    /**
+     * T67/V64: platforms with an achievement source — GOG is categorically
+     * excluded (no external read API exists).
+     */
+    private const ACHIEVEMENT_PLATFORMS = ['steam', 'xbox'];
     /**
      * @param  array<string, mixed>  $filters
      * @return list<array<string, mixed>>
@@ -105,12 +113,17 @@ class LibraryQuery
             ->get()
             ->keyBy('game_id');
 
-        $owned = OwnedGame::query()
+        $ownedRows = OwnedGame::query()
             ->where('user_id', $user->id)
             ->with(['game', 'connection.familyMember'])
-            ->get()
+            ->withCount(['achievements as unlocked_achievement_count' => fn ($q) => $q->where('unlocked', true)])
+            ->get();
+
+        $defTotals = $this->achievementDefTotals($ownedRows);
+
+        $owned = $ownedRows
             ->groupBy('game_id')
-            ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id)))
+            ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id), $defTotals))
             ->values();
 
         // V21: disjoint from owned at the data layer — no overlap check needed.
@@ -166,12 +179,13 @@ class LibraryQuery
             ->where('user_id', $user->id)
             ->where('game_id', $game->id)
             ->with(['game', 'connection.familyMember'])
+            ->withCount(['achievements as unlocked_achievement_count' => fn ($q) => $q->where('unlocked', true)])
             ->get();
 
         $meta = UserGameMeta::where('user_id', $user->id)->where('game_id', $game->id)->first();
 
         if ($group->isNotEmpty()) {
-            return $this->entry($group, $meta);
+            return $this->entry($group, $meta, $this->achievementDefTotals($group));
         }
 
         // V42: union rows resolve here too — a wishlist or meta-orphan
@@ -195,9 +209,10 @@ class LibraryQuery
 
     /**
      * @param  Collection<int, OwnedGame>  $group
+     * @param  array<string, int>  $defTotals
      * @return array<string, mixed>
      */
-    private function entry(Collection $group, ?UserGameMeta $meta): array
+    private function entry(Collection $group, ?UserGameMeta $meta, array $defTotals): array
     {
         $knownPlaytimes = $group->pluck('playtime_minutes')->reject(fn ($v) => $v === null);
 
@@ -226,6 +241,8 @@ class LibraryQuery
             'total_playtime_minutes' => $knownPlaytimes->isEmpty() ? null : $knownPlaytimes->sum(),
             'last_played_at' => $group->max('last_played_at')?->toIso8601String(),
             'added_at' => $group->min('added_at')?->toIso8601String(),
+            // T70/V67: null when no achievement-capable owning row exists.
+            'achievements_summary' => $this->achievementsSummary($group, $defTotals),
         ];
     }
 
@@ -245,7 +262,114 @@ class LibraryQuery
             'total_playtime_minutes' => null,
             'last_played_at' => null,
             'added_at' => $addedAt?->toIso8601String(),
+            // T70/V67: wishlist/none entries have no owning platform at all.
+            'achievements_summary' => null,
         ];
+    }
+
+    /**
+     * T70/V63/V67: aggregated across every achievement-capable owning row
+     * (a game owned on both Steam and Xbox sums both) — null when none of
+     * the owning rows are on an achievement-capable platform (V64).
+     *
+     * @param  Collection<int, OwnedGame>  $group
+     * @param  array<string, int>  $defTotals
+     * @return array{unlocked: int, total: int}|null
+     */
+    private function achievementsSummary(Collection $group, array $defTotals): ?array
+    {
+        $capable = $group->filter(
+            fn (OwnedGame $og) => in_array($og->connection->platform, self::ACHIEVEMENT_PLATFORMS, true),
+        );
+
+        if ($capable->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'unlocked' => $capable->sum(fn (OwnedGame $og) => $og->unlocked_achievement_count),
+            'total' => $capable->sum(
+                fn (OwnedGame $og) => $defTotals[$og->connection->platform.'|'.$og->platform_game_id] ?? 0,
+            ),
+        ];
+    }
+
+    /**
+     * Prefetches def counts per (platform, platform_game_id) in 1 query,
+     * avoiding an N+1 across every owned row when building entries.
+     *
+     * @param  Collection<int, OwnedGame>  $ownedRows
+     * @return array<string, int>
+     */
+    private function achievementDefTotals(Collection $ownedRows): array
+    {
+        $platformGameIds = $ownedRows
+            ->filter(fn (OwnedGame $og) => in_array($og->connection->platform, self::ACHIEVEMENT_PLATFORMS, true))
+            ->pluck('platform_game_id')
+            ->unique();
+
+        if ($platformGameIds->isEmpty()) {
+            return [];
+        }
+
+        return GameAchievementDef::query()
+            ->whereIn('platform', self::ACHIEVEMENT_PLATFORMS)
+            ->whereIn('platform_game_id', $platformGameIds)
+            ->get()
+            ->groupBy(fn (GameAchievementDef $d) => $d->platform.'|'.$d->platform_game_id)
+            ->map->count()
+            ->all();
+    }
+
+    /**
+     * I.api T70: GET /api/library/:game_id/achievements — the full list.
+     * Null (404 upstream) when the game has no achievement-capable owning
+     * row: not in the caller's library at all, gog/manual-only (V64), or a
+     * wishlist/none union entry (V67 — mirrors V53/V57 unowned gating).
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    public function achievementsForGame(User $user, Game $game): ?array
+    {
+        $capable = OwnedGame::query()
+            ->where('user_id', $user->id)
+            ->where('game_id', $game->id)
+            ->with('connection')
+            ->get()
+            ->filter(fn (OwnedGame $og) => in_array($og->connection->platform, self::ACHIEVEMENT_PLATFORMS, true));
+
+        if ($capable->isEmpty()) {
+            return null;
+        }
+
+        return $capable
+            ->flatMap(function (OwnedGame $og) {
+                $defs = GameAchievementDef::query()
+                    ->where('platform', $og->connection->platform)
+                    ->where('platform_game_id', $og->platform_game_id)
+                    ->get();
+
+                $unlocksByDefId = OwnedGameAchievement::query()
+                    ->where('owned_game_id', $og->id)
+                    ->get()
+                    ->keyBy('game_achievement_def_id');
+
+                return $defs->map(function (GameAchievementDef $def) use ($og, $unlocksByDefId) {
+                    $unlock = $unlocksByDefId->get($def->id);
+
+                    return [
+                        'platform' => $og->connection->platform,
+                        'name' => $def->name,
+                        'description' => $def->description,
+                        'icon_url' => $def->icon_url,
+                        'points' => $def->points,
+                        'unlocked' => $unlock?->unlocked ?? false,
+                        'unlocked_at' => $unlock?->unlocked_at?->toIso8601String(),
+                    ];
+                });
+            })
+            ->values()
+            ->all();
     }
 
     /**

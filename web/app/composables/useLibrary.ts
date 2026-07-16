@@ -3,6 +3,7 @@ import { useState } from '#app'
 import { apiFetch, type ApiError } from '../utils/api'
 import {
   buildLibraryQuery,
+  type Achievement,
   type LibraryEntry,
   type LibraryFacets,
   type LibraryFilters,
@@ -67,6 +68,22 @@ export function useLibrary() {
     return apiFetch<LibraryEntry>(`/api/library/${gameId}`)
   }
 
+  /**
+   * I.api T70: GET /api/library/:game_id/achievements — null (not an error)
+   * when the game has no achievement-capable owning row (V67 gating, 404).
+   */
+  async function fetchAchievements(gameId: number): Promise<Achievement[] | null> {
+    try {
+      const response = await apiFetch<{ achievements: Achievement[] }>(
+        `/api/library/${gameId}/achievements`
+      )
+      return response.achievements
+    } catch (err) {
+      if ((err as ApiError).status === 404) return null
+      throw err
+    }
+  }
+
   /** I.api: PUT /api/library/:game_id/meta — partial upsert (V6). */
   async function updateMeta(gameId: number, payload: LibraryMetaUpdate): Promise<void> {
     await apiFetch(`/api/library/${gameId}/meta`, { method: 'PUT', body: payload })
@@ -101,6 +118,7 @@ export function useLibrary() {
     promoteToOwned,
     removeFromWishlist,
     fetchGame,
+    fetchAchievements,
     updateMeta,
     rematch,
     refreshIgdb,

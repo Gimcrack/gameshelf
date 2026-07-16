@@ -46,6 +46,25 @@ export interface LibraryEntry {
   total_playtime_minutes: number | null
   last_played_at: string | null
   added_at: string | null
+  // T70/V63/V67: null when no achievement-capable owning row exists (gog/
+  // manual-only, wishlist, none) — aggregated across platforms else.
+  achievements_summary: AchievementSummary | null
+}
+
+export interface AchievementSummary {
+  unlocked: number
+  total: number
+}
+
+/** T70/I.api: GET /api/library/:game_id/achievements — one row per def. */
+export interface Achievement {
+  platform: string
+  name: string
+  description: string | null
+  icon_url: string | null
+  points: number | null
+  unlocked: boolean
+  unlocked_at: string | null
 }
 
 export interface LibraryMetaUpdate {

@@ -108,6 +108,12 @@ function onAddToCollection(): void {
         >
           {{ deckStatusLabel(p.deck_status!) }}
         </li>
+        <li
+          v-if="entry.achievements_summary"
+          class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-400"
+        >
+          🏆 {{ entry.achievements_summary.unlocked }}/{{ entry.achievements_summary.total }}
+        </li>
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
       <div class="mt-1.5 flex flex-wrap gap-1.5">

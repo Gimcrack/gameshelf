@@ -6,6 +6,7 @@ import {
   hasDisconnectedPlatform,
   libraryStatusLabel,
   showsPlaytime,
+  type Achievement,
   type GameStatus,
   type LibraryEntry
 } from '../../utils/library'
@@ -13,9 +14,12 @@ import {
 const route = useRoute()
 const gameId = computed(() => Number(route.params.id))
 
-const { fetchGame, updateMeta, refreshIgdb, promoteToOwned, removeFromWishlist } = useLibrary()
+const { fetchGame, fetchAchievements, updateMeta, refreshIgdb, promoteToOwned, removeFromWishlist } =
+  useLibrary()
 
 const entry: Ref<LibraryEntry | null> = ref(null)
+// T70: null = not achievement-capable (V67 gating) — section stays hidden.
+const achievements: Ref<Achievement[] | null> = ref(null)
 const pending = ref(false)
 const error = ref<string | null>(null)
 const saving = ref(false)
@@ -46,6 +50,7 @@ async function load(): Promise<void> {
   try {
     entry.value = await fetchGame(gameId.value)
     syncFormFromEntry(entry.value)
+    achievements.value = await fetchAchievements(gameId.value)
   } catch (err) {
     error.value = (err as { message?: string }).message ?? 'Failed to load game.'
   } finally {
@@ -285,6 +290,38 @@ async function onSave(): Promise<void> {
             <dd>{{ entry.game_modes.join(', ') }}</dd>
           </div>
         </dl>
+
+        <div v-if="achievements && achievements.length" class="mb-6 border-t border-slate-800 pt-4">
+          <h3 class="mb-2 text-sm font-semibold text-slate-300">
+            Achievements
+            <span v-if="entry.achievements_summary" class="font-normal text-slate-500">
+              ({{ entry.achievements_summary.unlocked }}/{{ entry.achievements_summary.total }})
+            </span>
+          </h3>
+          <ul class="space-y-2 p-0">
+            <li
+              v-for="a in achievements"
+              :key="`${a.platform}-${a.name}`"
+              class="flex items-start gap-2 rounded-md border border-slate-800 bg-slate-900 p-2"
+              :class="{ 'opacity-50': !a.unlocked }"
+            >
+              <img
+                v-if="a.icon_url"
+                :src="a.icon_url"
+                :alt="a.name"
+                class="h-8 w-8 shrink-0 rounded"
+              />
+              <div class="min-w-0 flex-1 text-xs">
+                <p class="font-medium text-slate-200">{{ a.name }}</p>
+                <p v-if="a.description" class="text-slate-500">{{ a.description }}</p>
+                <p v-if="a.unlocked && a.unlocked_at" class="text-teal-400">
+                  Unlocked {{ new Date(a.unlocked_at).toLocaleDateString() }}
+                </p>
+              </div>
+              <span v-if="a.points !== null" class="shrink-0 text-slate-500">{{ a.points }}G</span>
+            </li>
+          </ul>
+        </div>
 
         <form class="space-y-3 border-t border-slate-800 pt-4" @submit.prevent="onSave">
           <p v-if="saveError" class="text-rose-400">{{ saveError }}</p>

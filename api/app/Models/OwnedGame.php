@@ -56,4 +56,9 @@ class OwnedGame extends Model
     {
         return $this->hasMany(PlaytimeSnapshot::class);
     }
+
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(OwnedGameAchievement::class);
+    }
 }

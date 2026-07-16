@@ -99,4 +99,39 @@ describe('useLibrary', () => {
 
     expect(apiFetchMock).toHaveBeenCalledWith('/api/wishlist/1231', { method: 'DELETE' })
   })
+
+  // T70/I.api: GET /api/library/:game_id/achievements — unwraps the list.
+  it('fetches the achievement list for a game', async () => {
+    const achievements = [{ platform: 'steam', name: 'Tower of Rockets', unlocked: true }]
+    apiFetchMock.mockResolvedValue({ achievements })
+    const { fetchAchievements } = useLibrary()
+
+    const result = await fetchAchievements(5)
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/library/5/achievements')
+    expect(result).toEqual(achievements)
+  })
+
+  // T70/V67: a 404 (not achievement-capable) resolves to null, not an error.
+  it('resolves to null when the game has no achievement-capable owning row', async () => {
+    const notFound = new Error('Not Found') as Error & { status?: number }
+    notFound.status = 404
+    apiFetchMock.mockRejectedValue(notFound)
+    const { fetchAchievements } = useLibrary()
+
+    const result = await fetchAchievements(5)
+
+    expect(result).toBeNull()
+  })
+
+  it('rethrows non-404 errors from the achievements endpoint', async () => {
+    const serverError = new Error('Request failed. Please try again.') as Error & {
+      status?: number
+    }
+    serverError.status = 500
+    apiFetchMock.mockRejectedValue(serverError)
+    const { fetchAchievements } = useLibrary()
+
+    await expect(fetchAchievements(5)).rejects.toThrow('Request failed. Please try again.')
+  })
 })
