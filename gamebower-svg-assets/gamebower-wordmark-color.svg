@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title desc">
+
+  <title id="title">GameBower wordmark</title>
+  <desc id="desc">Editable sans-serif GameBower wordmark.</desc>
+  <g font-family="Inter, Avenir Next, Segoe UI, Arial, sans-serif" font-size="170" font-weight="600" letter-spacing="-6">
+    <text x="24" y="190" fill="#1A1E4A">Game</text>
+    <text x="455" y="190" fill="#3A4556">Bower</text>
+  </g>
+  <path d="M777 105 L804 160 L830 105" fill="none" stroke="#2FA7A0" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
