@@ -24,6 +24,19 @@ const filterCollections = computed(() => collections.value.filter((c) => c.type 
 const selectedCollection = ref('')
 
 const isLoggingOut = ref(false)
+// V62: filter sidebar collapses into this drawer below `md`.
+const filterDrawerOpen = ref(false)
+
+function closeFilterDrawer(): void {
+  filterDrawerOpen.value = false
+}
+
+function onDrawerKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') closeFilterDrawer()
+}
+
+onMounted(() => window.addEventListener('keydown', onDrawerKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onDrawerKeydown))
 
 const q = ref('')
 const sort = ref<LibrarySort>('alpha')
@@ -146,9 +159,12 @@ async function onLogout(): Promise<void> {
         <BrandWordmark />
       </h1>
       <div v-if="user" class="flex items-center gap-3">
-        <NuxtLink to="/discover" class="text-sm text-teal-400 hover:text-teal-300">Discover</NuxtLink>
-        <NuxtLink to="/stats" class="text-sm text-teal-400 hover:text-teal-300">Stats</NuxtLink>
-        <NuxtLink to="/profile" class="text-sm text-teal-400 hover:text-teal-300">Profile</NuxtLink>
+        <!-- V62: relocated to AppBottomNav below `md` - hidden here to avoid duplicate nav. -->
+        <div class="hidden items-center gap-3 md:flex">
+          <NuxtLink to="/discover" class="text-sm text-teal-400 hover:text-teal-300">Discover</NuxtLink>
+          <NuxtLink to="/stats" class="text-sm text-teal-400 hover:text-teal-300">Stats</NuxtLink>
+          <NuxtLink to="/profile" class="text-sm text-teal-400 hover:text-teal-300">Profile</NuxtLink>
+        </div>
         <span class="text-sm text-slate-400">{{ user.email }}</span>
         <button
           :disabled="isLoggingOut"
@@ -161,7 +177,9 @@ async function onLogout(): Promise<void> {
     </header>
 
     <div class="flex gap-6">
+      <!-- V62: static sidebar only at `md`+; below that it collapses into the drawer. -->
       <LibraryFilterSidebar
+        class="hidden md:flex"
         :facets="facets"
         v-model:platforms="platforms"
         v-model:genres="genres"
@@ -178,6 +196,14 @@ async function onLogout(): Promise<void> {
       />
 
       <div class="min-w-0 flex-1">
+        <button
+          type="button"
+          class="mb-4 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300 md:hidden"
+          @click="filterDrawerOpen = true"
+        >
+          Filters
+        </button>
+
         <section class="mb-6 flex flex-wrap items-end gap-4 text-sm text-slate-400">
           <label class="flex min-w-64 flex-1 flex-col gap-1">
             Search
@@ -257,5 +283,44 @@ async function onLogout(): Promise<void> {
         </section>
       </div>
     </div>
+
+    <!-- V62: mobile filter drawer - closes on backdrop tap, Escape, or the close button. -->
+    <Teleport to="body">
+      <div v-if="filterDrawerOpen" class="fixed inset-0 z-50 md:hidden">
+        <div class="absolute inset-0 bg-black/60" @click="closeFilterDrawer" />
+        <div
+          class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto border-r border-slate-800 bg-slate-950 p-4 shadow-xl"
+        >
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-base font-semibold text-slate-100">Filters</h2>
+            <button
+              type="button"
+              class="rounded-md px-2 py-1 text-slate-400 hover:text-teal-300"
+              aria-label="Close filters"
+              @click="closeFilterDrawer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <LibraryFilterSidebar
+            class="w-full"
+            :facets="facets"
+            v-model:platforms="platforms"
+            v-model:genres="genres"
+            v-model:themes="themes"
+            v-model:keywords="keywords"
+            v-model:game-modes="gameModes"
+            v-model:deck-statuses="deckStatuses"
+            v-model:esrb="esrb"
+            v-model:library-statuses="libraryStatuses"
+            v-model:ratings="ratings"
+            v-model:unplayed="unplayed"
+            v-model:show-hidden="showHidden"
+            @save="onSaveCollection"
+          />
+        </div>
+      </div>
+    </Teleport>
   </main>
 </template>
