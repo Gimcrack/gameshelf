@@ -155,6 +155,9 @@ class GameMatcher
         $provisional->update([
             ...IgdbGameAttributes::fromRecord($igdb),
             'time_to_beat_minutes' => $this->timeToBeat((int) $igdb['id']),
+            // V50: stamp the match so the 24h freshness gate skips this game
+            // on the next platform sync (T51).
+            'igdb_synced_at' => now(),
         ]);
     }
 

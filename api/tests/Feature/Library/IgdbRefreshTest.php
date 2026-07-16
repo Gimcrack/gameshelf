@@ -60,6 +60,8 @@ class IgdbRefreshTest extends TestCase
         $this->assertSame(['Puzzle'], $response->json('genres'));
         $this->assertSame(60, $response->json('time_to_beat_minutes'));
         $this->assertDatabaseHas('games', ['id' => $game->id, 'title' => 'Portal 2 (Updated)']);
+        // V50: refresh stamps the freshness clock.
+        $this->assertNotNull($game->fresh()->igdb_synced_at);
     }
 
     /**

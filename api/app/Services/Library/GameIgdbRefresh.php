@@ -31,6 +31,8 @@ class GameIgdbRefresh
         $game->update([
             ...IgdbGameAttributes::fromRecord($record),
             'time_to_beat_minutes' => $this->timeToBeat($game->igdb_id),
+            // V50: refresh resets the freshness clock (24h gate, T51).
+            'igdb_synced_at' => now(),
         ]);
 
         return $game->fresh();

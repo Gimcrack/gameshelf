@@ -104,6 +104,8 @@ class GameMatcherTest extends TestCase
         // offlinecoop present → local_coop true.
         $this->assertTrue($game->local_coop);
         $this->assertTrue($game->local_multiplayer);
+        // V50: matching stamps the freshness clock (T51 24h gate).
+        $this->assertNotNull($game->igdb_synced_at);
     }
 
     /**

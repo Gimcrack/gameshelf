@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'igdb_id', 'title', 'cover_url', 'genres', 'themes', 'keywords', 'game_modes',
     'release_date', 'time_to_beat_minutes',
     'esrb_rating', 'multiplayer', 'coop', 'local_multiplayer', 'local_coop',
+    'igdb_synced_at',
 ])]
 class Game extends Model
 {
@@ -30,6 +31,7 @@ class Game extends Model
             'coop' => 'boolean',
             'local_multiplayer' => 'boolean',
             'local_coop' => 'boolean',
+            'igdb_synced_at' => 'datetime',
         ];
     }
 

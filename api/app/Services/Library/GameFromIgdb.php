@@ -33,6 +33,9 @@ class GameFromIgdb
         return Game::create([
             ...IgdbGameAttributes::fromRecord($record),
             'time_to_beat_minutes' => $this->timeToBeat($igdbId),
+            // V50: stamp the canonical fetch so the 24h freshness gate can
+            // skip a just-created game on the next platform sync.
+            'igdb_synced_at' => now(),
         ]);
     }
 
