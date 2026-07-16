@@ -58,8 +58,9 @@ const hexTiles = [
         <BrandMark :size="56" />
       </div>
       <h1 class="mx-auto max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-        Every game you own.
-        <span class="text-teal-400">One collection.</span>
+        All your games
+        <br>
+        <span class="text-teal-400">In one place</span>
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg text-slate-400">
         Your library is scattered across Steam, GOG, and Xbox. GameBower gathers it in one
