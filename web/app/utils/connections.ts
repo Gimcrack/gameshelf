@@ -43,6 +43,15 @@ export function extractGogCode(input: string): string {
   return code !== null && code !== '' ? code : trimmed
 }
 
+/**
+ * T56/B17/V54: NUXT_PUBLIC_GOG_CLIENT_ID defaults to '' when unset — a
+ * missing client id must fail loud locally (distinct message) rather than
+ * silently building a broken authorize URL that dead-ends at GOG's server.
+ */
+export function hasGogClientId(clientId: string): boolean {
+  return clientId.trim() !== ''
+}
+
 export function connectionStatusLabel(status: PlatformConnection['status']): string {
   switch (status) {
     case 'pending':

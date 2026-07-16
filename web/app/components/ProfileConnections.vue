@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { buildGogAuthUrl, connectionStatusLabel, extractGogCode } from '../utils/connections'
+import {
+  buildGogAuthUrl,
+  connectionStatusLabel,
+  extractGogCode,
+  hasGogClientId
+} from '../utils/connections'
 import type { ApiError } from '../utils/api'
 import type { SteamIdentity } from '../composables/useConnections'
 
@@ -30,6 +35,7 @@ const wishlistSyncMessage = ref('')
 const wishlistSyncError = ref('')
 
 const gogAuthUrl = computed(() => buildGogAuthUrl(config.public.gogClientId as string))
+const gogClientIdConfigured = computed(() => hasGogClientId(config.public.gogClientId as string))
 const hasSteam = computed(() =>
   connections.value.some((c) => c.platform === 'steam' && c.status !== 'disconnected')
 )
@@ -230,28 +236,33 @@ async function onSyncWishlist(): Promise<void> {
 
       <div v-if="!hasGog" class="rounded-md border border-slate-800 p-4">
         <h3 class="mb-2 text-sm font-semibold text-slate-100">Connect GOG</h3>
-        <p class="mb-2 text-xs text-slate-400">
-          <a
-            :href="gogAuthUrl"
-            target="_blank"
-            rel="noopener"
-            class="text-teal-400 hover:text-teal-300"
-            >Log in to GOG</a
-          >, then paste the final page's URL (or just the <code class="text-slate-300">code</code> value) here.
+        <p v-if="!gogClientIdConfigured" class="text-xs text-rose-400">
+          GOG login unavailable (missing client id).
         </p>
-        <input
-          v-model="gogCode"
-          type="text"
-          placeholder="Paste the final GOG URL or code"
-          class="mb-2 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
-        />
-        <button
-          :disabled="busy || !gogCode.trim()"
-          class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
-          @click="connectGog"
-        >
-          Connect GOG
-        </button>
+        <template v-else>
+          <p class="mb-2 text-xs text-slate-400">
+            <a
+              :href="gogAuthUrl"
+              target="_blank"
+              rel="noopener"
+              class="text-teal-400 hover:text-teal-300"
+              >Log in to GOG</a
+            >, then paste the final page's URL (or just the <code class="text-slate-300">code</code> value) here.
+          </p>
+          <input
+            v-model="gogCode"
+            type="text"
+            placeholder="Paste the final GOG URL or code"
+            class="mb-2 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
+          />
+          <button
+            :disabled="busy || !gogCode.trim()"
+            class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-50"
+            @click="connectGog"
+          >
+            Connect GOG
+          </button>
+        </template>
       </div>
     </div>
 

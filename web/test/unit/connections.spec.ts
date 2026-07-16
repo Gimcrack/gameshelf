@@ -3,7 +3,8 @@ import {
   buildGogAuthUrl,
   connectionStatusLabel,
   extractGogCode,
-  GOG_REDIRECT_URI
+  GOG_REDIRECT_URI,
+  hasGogClientId
 } from '../../app/utils/connections'
 
 describe('buildGogAuthUrl', () => {
@@ -41,6 +42,15 @@ describe('extractGogCode', () => {
 
   it('returns empty string for empty input', () => {
     expect(extractGogCode('   ')).toBe('')
+  })
+})
+
+describe('hasGogClientId', () => {
+  // T56/B17/V54: empty/whitespace client id → fail loud locally, not a dead link.
+  it('is false for empty or whitespace-only, true otherwise', () => {
+    expect(hasGogClientId('')).toBe(false)
+    expect(hasGogClientId('   ')).toBe(false)
+    expect(hasGogClientId('46899977096215655')).toBe(true)
   })
 })
 
