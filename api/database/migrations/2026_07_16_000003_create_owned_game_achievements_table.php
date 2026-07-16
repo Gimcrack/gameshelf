@@ -17,7 +17,8 @@ return new class extends Migration
             $table->timestamp('synced_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['owned_game_id', 'game_achievement_def_id']);
+            // Default auto-generated name exceeds MySQL's 64-char identifier limit.
+            $table->unique(['owned_game_id', 'game_achievement_def_id'], 'owned_game_achievements_unique');
         });
     }
 
