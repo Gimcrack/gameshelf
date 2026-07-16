@@ -75,4 +75,28 @@ describe('useLibrary', () => {
       body: { status: 'playing', tags: ['co-op'], notes: null, rating: 4 }
     })
   })
+
+  // T52/V21: promote posts to the manual-add endpoint — the API clears the
+  // wishlist row server-side once the game lands in owned_games.
+  it('promotes a wishlist game by posting igdb_id to /api/library', async () => {
+    apiFetchMock.mockResolvedValue({})
+    const { promoteToOwned } = useLibrary()
+
+    await promoteToOwned(1231)
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/library', {
+      method: 'POST',
+      body: { igdb_id: 1231 }
+    })
+  })
+
+  // T52/I.api T17: DELETE /api/wishlist/:game_id.
+  it('removes a wishlist entry by game id', async () => {
+    apiFetchMock.mockResolvedValue({})
+    const { removeFromWishlist } = useLibrary()
+
+    await removeFromWishlist(1231)
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/wishlist/1231', { method: 'DELETE' })
+  })
 })
