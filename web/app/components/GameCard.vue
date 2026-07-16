@@ -26,6 +26,8 @@ const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
 const manual = computed(() => hasManualEntry(props.entry))
 const showPlaytime = computed(() => showsPlaytime(props.entry))
 const showRating = computed(() => showsRating(props.entry))
+// T60/V58: attribution for shared entries — the family member's persona_name.
+const sharedBy = computed(() => props.entry.platforms.find((p) => p.shared_by)?.shared_by ?? null)
 const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_minutes))
 const stars = computed(() => ratingStars(props.entry.rating))
 const selectedCollectionId = ref<number | null>(null)
@@ -81,6 +83,12 @@ function onAddToCollection(): void {
           class="rounded bg-violet-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-violet-300"
         >
           Wishlist
+        </li>
+        <li
+          v-if="entry.library_status === 'shared'"
+          class="rounded bg-indigo-950/60 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-indigo-300"
+        >
+          Shared<span v-if="sharedBy"> · via {{ sharedBy }}</span>
         </li>
         <li
           v-for="p in entry.platforms"

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\ConnectionStatus;
 use App\Models\PlatformConnection;
 use App\Services\Gog\GogSyncer;
+use App\Services\Steam\SteamFamilySyncer;
 use App\Services\Steam\SteamSyncer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -40,6 +41,7 @@ class SyncConnection implements ShouldQueue
             match ($connection->platform) {
                 'steam' => app(SteamSyncer::class)->sync($connection),
                 'gog' => app(GogSyncer::class)->sync($connection),
+                'steam_family' => app(SteamFamilySyncer::class)->sync($connection),
                 default => throw new \RuntimeException("Unsupported platform: {$connection->platform}"),
             };
         } catch (\Throwable $e) {

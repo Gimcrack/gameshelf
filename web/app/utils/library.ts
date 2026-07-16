@@ -7,12 +7,14 @@ export interface LibraryPlatform {
   last_played_at: string | null
   // T26/V31: Steam-only; null = never successfully checked.
   deck_status: DeckStatus | null
+  // T60/V58: family member persona_name when this row is shared, else null.
+  shared_by: string | null
 }
 
 export type GameStatus = 'unplayed' | 'playing' | 'finished' | 'abandoned'
 
-// T38/V42: owned > free > wishlist > none precedence, computed server-side.
-export type LibraryStatus = 'owned' | 'free' | 'wishlist' | 'none'
+// T38/T60/V42/V58: owned > free > shared > wishlist > none, computed server-side.
+export type LibraryStatus = 'owned' | 'free' | 'shared' | 'wishlist' | 'none'
 
 export interface LibraryEntry {
   id: number
@@ -169,10 +171,11 @@ export function deckStatusLabel(status: DeckStatus): string {
   return DECK_STATUS_LABELS[status]
 }
 
-/** T54/V42: precedence owned > free > wishlist > none. */
+/** T54/T60/V42/V58: precedence owned > free > shared > wishlist > none. */
 const LIBRARY_STATUS_LABELS: Record<LibraryStatus, string> = {
   owned: 'Owned',
   free: 'Free-to-play',
+  shared: 'Shared',
   wishlist: 'Wishlist',
   none: 'Not owned'
 }
@@ -216,12 +219,24 @@ export function hasManualEntry(entry: LibraryEntry): boolean {
   return entry.platforms.some((p) => p.platform === 'manual')
 }
 
-/** T55/V53: playtime doesn't apply to unowned entries — owned|free only. */
+/**
+ * T55/T60/V53: playtime doesn't apply to unowned entries — owned|free|shared.
+ * Shared rows always carry null playtime (V58, untracked-by-design) and
+ * still render "Playtime unknown" (V12), same as a null owned row.
+ */
 export function showsPlaytime(entry: LibraryEntry): boolean {
-  return entry.library_status === 'owned' || entry.library_status === 'free'
+  return (
+    entry.library_status === 'owned' ||
+    entry.library_status === 'free' ||
+    entry.library_status === 'shared'
+  )
 }
 
-/** T59/V57: personal rating display doesn't apply to unowned entries — owned|free only. */
+/** T59/T60/V57: personal rating display doesn't apply to unowned entries — owned|free|shared. */
 export function showsRating(entry: LibraryEntry): boolean {
-  return entry.library_status === 'owned' || entry.library_status === 'free'
+  return (
+    entry.library_status === 'owned' ||
+    entry.library_status === 'free' ||
+    entry.library_status === 'shared'
+  )
 }

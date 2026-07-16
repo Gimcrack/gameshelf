@@ -31,8 +31,8 @@ const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'veri
 
 const ESRB_LABELS: Record<string, string> = { none: 'No Rating' }
 
-// T38: static list — no facets source for library status (I.api).
-const LIBRARY_STATUSES: LibraryStatus[] = ['owned', 'free', 'wishlist', 'none']
+// T38/T60: static list — no facets source for library status (I.api).
+const LIBRARY_STATUSES: LibraryStatus[] = ['owned', 'free', 'shared', 'wishlist', 'none']
 
 // T54: shared with the game-detail page badge, ⊥ duplicate label copies.
 const LIBRARY_STATUS_LABELS: Record<string, string> = Object.fromEntries(

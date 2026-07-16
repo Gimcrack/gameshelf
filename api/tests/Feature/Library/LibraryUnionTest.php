@@ -54,6 +54,23 @@ class LibraryUnionTest extends TestCase
         ]);
     }
 
+    private function shared(Game $game): OwnedGame
+    {
+        return OwnedGame::create([
+            'user_id' => $this->user->id,
+            'platform_connection_id' => PlatformConnection::factory()->create([
+                'user_id' => $this->user->id,
+                'platform' => 'steam_family',
+                'status' => 'ok',
+            ])->id,
+            'game_id' => $game->id,
+            'platform_game_id' => (string) fake()->unique()->numberBetween(1, 999999),
+            'playtime_minutes' => null,
+            'added_at' => '2026-01-01 00:00:00',
+            'shared' => true,
+        ]);
+    }
+
     private function wish(Game $game, ?string $suppressedAt = null): WishlistItem
     {
         return WishlistItem::create([
@@ -147,6 +164,26 @@ class LibraryUnionTest extends TestCase
 
         $this->assertSame('free', $entries['Pure F2P']['library_status']);
         $this->assertSame('owned', $entries['Mixed Game']['library_status']);
+    }
+
+    /**
+     * T60/V58 precedence: shared wins over wishlist, but a plain-owned or
+     * free row always outranks a shared one for the same game.
+     */
+    public function test_shared_status_between_free_and_wishlist(): void
+    {
+        $this->shared($this->game('Only Shared'));
+
+        $ownedAlso = $this->game('Owned Elsewhere');
+        $this->shared($ownedAlso);
+        $this->own($ownedAlso, 10);
+
+        $entries = collect($this->getJson('/api/library')->assertOk()->json())->keyBy('title');
+
+        $shared = $entries['Only Shared'];
+        $this->assertSame('shared', $shared['library_status']);
+        $this->assertNull($shared['total_playtime_minutes']);
+        $this->assertSame('owned', $entries['Owned Elsewhere']['library_status']);
     }
 
     // I.api: library_status[] multi-select.

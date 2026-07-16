@@ -5,6 +5,7 @@ use App\Http\Controllers\Account\TokenController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Connections\ConnectionController;
 use App\Http\Controllers\Discover\DiscoverController;
+use App\Http\Controllers\FamilyMembers\FamilyMemberController;
 use App\Http\Controllers\Library\CollectionController;
 use App\Http\Controllers\Library\GameMetaController;
 use App\Http\Controllers\Library\IgdbRefreshController;
@@ -40,6 +41,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/connections', [ConnectionController::class, 'store']);
     Route::post('/connections/{connection}/sync', [ConnectionController::class, 'sync']);
     Route::delete('/connections/{connection}', [ConnectionController::class, 'destroy']);
+
+    Route::get('/family-members', [FamilyMemberController::class, 'index']);
+    Route::post('/family-members', [FamilyMemberController::class, 'store']);
+    Route::delete('/family-members/{familyMember}', [FamilyMemberController::class, 'destroy']);
 
     Route::get('/library', [LibraryController::class, 'index']);
     // T28: must precede /library/{game} — otherwise "facets" binds as {game}.

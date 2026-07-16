@@ -43,7 +43,8 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
         connection_status: 'ok',
         playtime_minutes: 100,
         last_played_at: null,
-        deck_status: null
+        deck_status: null,
+        shared_by: null
       }
     ],
     total_playtime_minutes: 100,
@@ -234,20 +235,22 @@ describe('hasManualEntry', () => {
 })
 
 describe('showsPlaytime', () => {
-  // T55/V53: playtime doesn't apply to unowned (wishlist/none) entries.
-  it('shows for owned and free, hides for wishlist and none', () => {
+  // T55/T60/V53: playtime doesn't apply to unowned (wishlist/none) entries.
+  it('shows for owned, free and shared, hides for wishlist and none', () => {
     expect(showsPlaytime(entry({ library_status: 'owned' }))).toBe(true)
     expect(showsPlaytime(entry({ library_status: 'free' }))).toBe(true)
+    expect(showsPlaytime(entry({ library_status: 'shared' }))).toBe(true)
     expect(showsPlaytime(entry({ library_status: 'wishlist' }))).toBe(false)
     expect(showsPlaytime(entry({ library_status: 'none' }))).toBe(false)
   })
 })
 
 describe('showsRating', () => {
-  // T59/V57: personal rating doesn't apply to unowned (wishlist/none) entries.
-  it('shows for owned and free, hides for wishlist and none', () => {
+  // T59/T60/V57: personal rating doesn't apply to unowned (wishlist/none) entries.
+  it('shows for owned, free and shared, hides for wishlist and none', () => {
     expect(showsRating(entry({ library_status: 'owned' }))).toBe(true)
     expect(showsRating(entry({ library_status: 'free' }))).toBe(true)
+    expect(showsRating(entry({ library_status: 'shared' }))).toBe(true)
     expect(showsRating(entry({ library_status: 'wishlist' }))).toBe(false)
     expect(showsRating(entry({ library_status: 'none' }))).toBe(false)
   })

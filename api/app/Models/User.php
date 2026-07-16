@@ -33,6 +33,11 @@ class User extends Authenticatable
         return $this->hasMany(Collection::class);
     }
 
+    public function familyMembers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(FamilyMember::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

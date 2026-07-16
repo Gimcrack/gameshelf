@@ -51,4 +51,9 @@ class PlatformConnection extends Model
     {
         return $this->hasMany(OwnedGame::class);
     }
+
+    public function familyMember(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(FamilyMember::class);
+    }
 }

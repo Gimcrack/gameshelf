@@ -170,11 +170,12 @@ async function onSave(): Promise<void> {
 
         <span
           class="mb-2 inline-block rounded px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide"
-          :class="
-            entry.library_status === 'wishlist'
-              ? 'bg-violet-950/60 text-violet-300'
-              : 'bg-slate-800 text-slate-300'
-          "
+          :class="{
+            'bg-violet-950/60 text-violet-300': entry.library_status === 'wishlist',
+            'bg-indigo-950/60 text-indigo-300': entry.library_status === 'shared',
+            'bg-slate-800 text-slate-300':
+              entry.library_status !== 'wishlist' && entry.library_status !== 'shared'
+          }"
         >
           {{ libraryStatusLabel(entry.library_status) }}
         </span>
@@ -199,6 +200,7 @@ async function onSave(): Promise<void> {
           >
             {{ p.platform }} · {{ formatPlaytime(p.playtime_minutes) }}
             <span v-if="p.deck_status"> · {{ deckStatusLabel(p.deck_status) }}</span>
+            <span v-if="p.shared_by"> · shared via {{ p.shared_by }}</span>
           </li>
         </ul>
 

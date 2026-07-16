@@ -22,10 +22,11 @@ use Illuminate\Support\Facades\Date;
 class LibraryQuery
 {
     /**
-     * V42: statuses backed by owned_games rows — the only ones stats,
-     * backlog and system collections count.
+     * V42/V58: statuses backed by owned_games rows — the only ones stats,
+     * backlog and system collections count. Shared counts same as owned+free
+     * (fully playable, T60).
      */
-    private const OWNED_STATUSES = ['owned', 'free'];
+    private const OWNED_STATUSES = ['owned', 'free', 'shared'];
     /**
      * @param  array<string, mixed>  $filters
      * @return list<array<string, mixed>>
@@ -106,7 +107,7 @@ class LibraryQuery
 
         $owned = OwnedGame::query()
             ->where('user_id', $user->id)
-            ->with(['game', 'connection'])
+            ->with(['game', 'connection.familyMember'])
             ->get()
             ->groupBy('game_id')
             ->map(fn (Collection $group) => $this->entry($group, $metaByGame->get($group->first()->game_id)))
@@ -164,7 +165,7 @@ class LibraryQuery
         $group = OwnedGame::query()
             ->where('user_id', $user->id)
             ->where('game_id', $game->id)
-            ->with(['game', 'connection'])
+            ->with(['game', 'connection.familyMember'])
             ->get();
 
         $meta = UserGameMeta::where('user_id', $user->id)->where('game_id', $game->id)->first();
@@ -203,11 +204,13 @@ class LibraryQuery
         return [
             ...$this->gameFields($group->first()->game),
             ...$this->metaFields($meta),
-            // V42: free iff every owning row is F2P (T37) — one paid row
-            // makes the game owned.
-            'library_status' => $group->every(fn (OwnedGame $owned) => $owned->free_to_play)
-                ? 'free'
-                : 'owned',
+            // V42/V58 precedence: any plain-owned row (¬free_to_play∧¬shared)
+            // wins outright; else any free_to_play row wins over shared.
+            'library_status' => match (true) {
+                $group->contains(fn (OwnedGame $owned) => ! $owned->free_to_play && ! $owned->shared) => 'owned',
+                $group->contains(fn (OwnedGame $owned) => $owned->free_to_play) => 'free',
+                default => 'shared',
+            },
             'platforms' => $group->map(fn (OwnedGame $owned) => [
                 'platform' => $owned->connection->platform,
                 // V13: disconnected status flows through for UI badges.
@@ -216,6 +219,8 @@ class LibraryQuery
                 'last_played_at' => $owned->last_played_at?->toIso8601String(),
                 // T26/V31: Steam-only, null = never successfully checked.
                 'deck_status' => $owned->deck_status?->value,
+                // T60/V58: attribution for shared rows, null otherwise.
+                'shared_by' => $owned->shared ? $owned->connection->familyMember?->persona_name : null,
             ])->values()->all(),
             // V12: all-null playtime stays null (unknown), never 0.
             'total_playtime_minutes' => $knownPlaytimes->isEmpty() ? null : $knownPlaytimes->sum(),

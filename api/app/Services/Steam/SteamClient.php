@@ -13,6 +13,9 @@ class SteamClient
 
     private const STORE_URL = 'https://store.steampowered.com';
 
+    /** I.ext/V58: appdetails categories[] id for "Family Sharing". */
+    public const FAMILY_SHARING_CATEGORY_ID = 62;
+
     public function __construct(private readonly string $apiKey)
     {
     }
@@ -175,6 +178,32 @@ class SteamClient
             $entry = $response->json((string) $appId);
 
             return ($entry['success'] ?? false) ? ($entry['data']['name'] ?? null) : null;
+        });
+    }
+
+    /**
+     * V58: appdetails `categories[]` ids for an appid, cached forever (mirrors
+     * appName — same endpoint, categories don't churn). Category id=62 is
+     * "Family Sharing" (I.ext), a public/unauthenticated best-effort signal.
+     *
+     * @return list<int>
+     */
+    public function appCategoryIds(int $appId): array
+    {
+        return Cache::rememberForever("steam-app-categories:{$appId}", function () use ($appId) {
+            $response = Http::get(self::STORE_URL.'/api/appdetails', ['appids' => $appId]);
+
+            if ($response->failed()) {
+                throw new RuntimeException('Steam appdetails request failed: '.$response->status());
+            }
+
+            $entry = $response->json((string) $appId);
+
+            if (! ($entry['success'] ?? false)) {
+                return [];
+            }
+
+            return array_column($entry['data']['categories'] ?? [], 'id');
         });
     }
 
