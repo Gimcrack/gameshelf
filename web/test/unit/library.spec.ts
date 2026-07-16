@@ -5,6 +5,7 @@ import {
   hasDisconnectedPlatform,
   hasManualEntry,
   libraryFiltersToPreset,
+  libraryStatusLabel,
   nextRating,
   ratingStars,
   type LibraryEntry
@@ -177,6 +178,16 @@ describe('formatPlaytime', () => {
     expect(formatPlaytime(45)).toBe('45m')
     expect(formatPlaytime(60)).toBe('1h')
     expect(formatPlaytime(90)).toBe('1h 30m')
+  })
+})
+
+describe('libraryStatusLabel', () => {
+  // T54/V42: precedence owned > free > wishlist > none.
+  it('maps every library_status to user-facing copy', () => {
+    expect(libraryStatusLabel('owned')).toBe('Owned')
+    expect(libraryStatusLabel('free')).toBe('Free-to-play')
+    expect(libraryStatusLabel('wishlist')).toBe('Wishlist')
+    expect(libraryStatusLabel('none')).toBe('Not owned')
   })
 })
 

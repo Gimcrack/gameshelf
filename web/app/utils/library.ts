@@ -169,6 +169,18 @@ export function deckStatusLabel(status: DeckStatus): string {
   return DECK_STATUS_LABELS[status]
 }
 
+/** T54/V42: precedence owned > free > wishlist > none. */
+const LIBRARY_STATUS_LABELS: Record<LibraryStatus, string> = {
+  owned: 'Owned',
+  free: 'Free-to-play',
+  wishlist: 'Wishlist',
+  none: 'Not owned'
+}
+
+export function libraryStatusLabel(status: LibraryStatus): string {
+  return LIBRARY_STATUS_LABELS[status]
+}
+
 /**
  * T39: click a star to set that rating; click the current rating to clear it (null).
  */

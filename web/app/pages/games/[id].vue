@@ -4,6 +4,7 @@ import {
   deckStatusLabel,
   formatPlaytime,
   hasDisconnectedPlatform,
+  libraryStatusLabel,
   type GameStatus,
   type LibraryEntry
 } from '../../utils/library'
@@ -165,6 +166,17 @@ async function onSave(): Promise<void> {
 
       <div>
         <h2 class="mb-2 text-xl font-semibold text-slate-100">{{ entry.title }}</h2>
+
+        <span
+          class="mb-2 inline-block rounded px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide"
+          :class="
+            entry.library_status === 'wishlist'
+              ? 'bg-violet-950/60 text-violet-300'
+              : 'bg-slate-800 text-slate-300'
+          "
+        >
+          {{ libraryStatusLabel(entry.library_status) }}
+        </span>
 
         <div class="mb-4 flex flex-wrap gap-3 text-xs text-slate-400">
           <span v-if="entry.release_date">Released {{ entry.release_date }}</span>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { DeckStatus, LibraryFacets, LibraryStatus } from '~/utils/library'
+import { libraryStatusLabel, type DeckStatus, type LibraryFacets, type LibraryStatus } from '~/utils/library'
 import { unifiedGameModeOptions } from '~/utils/facets'
 
 const props = defineProps<{ facets: LibraryFacets }>()
@@ -34,12 +34,10 @@ const ESRB_LABELS: Record<string, string> = { none: 'No Rating' }
 // T38: static list — no facets source for library status (I.api).
 const LIBRARY_STATUSES: LibraryStatus[] = ['owned', 'free', 'wishlist', 'none']
 
-const LIBRARY_STATUS_LABELS: Record<string, string> = {
-  owned: 'Owned',
-  free: 'Free-to-play',
-  wishlist: 'Wishlist',
-  none: 'Not owned'
-}
+// T54: shared with the game-detail page badge, ⊥ duplicate label copies.
+const LIBRARY_STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  LIBRARY_STATUSES.map((status) => [status, libraryStatusLabel(status)])
+)
 
 // T40: static list — personal rating is not a facets source (I.api).
 const RATINGS: string[] = ['1', '2', '3', '4', '5', 'none']
