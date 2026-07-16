@@ -2,7 +2,7 @@
 const steps = [
   {
     title: 'Connect',
-    body: 'Link your Steam and GOG accounts. GameBower pulls every game you own, automatically.'
+    body: 'Link your Steam, GOG, and Xbox accounts. GameBower pulls every game you own, automatically.'
   },
   {
     title: 'One bower',
@@ -62,7 +62,7 @@ const hexTiles = [
         <span class="text-teal-400">One bower.</span>
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg text-slate-400">
-        Your library is scattered across Steam and GOG. GameBower gathers it in one
+        Your library is scattered across Steam, GOG, and Xbox. GameBower gathers it in one
         place, deduplicates it, and shows you what's still waiting to be played.
       </p>
       <div class="mt-8 flex items-center justify-center gap-4">
