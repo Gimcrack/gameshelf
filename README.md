@@ -44,6 +44,7 @@ Edit `.env`:
 - `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`
 - `STEAM_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET`
 - `XBOX_CLIENT_ID`, `XBOX_CLIENT_SECRET` (optional — leave blank to skip Xbox)
+- `HORIZON_BASIC_AUTH_USER`, `HORIZON_BASIC_AUTH_PASSWORD` — required to view the `/horizon` dashboard; left unset it denies everyone rather than falling open (there's no session-based web login in this app for a normal auth gate to hook into)
 - `APP_URL` to your API's real URL
 
 ```bash
@@ -57,9 +58,11 @@ Run the API (a real webserver + PHP-FPM in production; `php artisan serve` is fi
 Two long-running processes, separate from serving HTTP requests:
 
 ```bash
-php artisan queue:work        # processes sync jobs, IGDB matching, etc. — run under supervisor/systemd in prod
+php artisan horizon           # supervises the queue worker(s) — run under supervisor/systemd in prod
 php artisan schedule:work     # dev only — runs the daily connection-sync cron job
 ```
+
+Horizon's `config/horizon.php` caps the production supervisor at 1 worker process (`maxProcesses`, `balance: simple`) — sized for a modest single server, not auto-scaling. Bump it if your box can take more concurrent jobs.
 
 In production, don't use `schedule:work`; instead add a single cron entry and let Laravel's scheduler dispatch from there:
 
@@ -67,7 +70,7 @@ In production, don't use `schedule:work`; instead add a single cron entry and le
 * * * * * cd /path/to/api && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Without the queue worker running, nothing ever syncs — connects/sync-now requests just sit queued forever (V8: sync always happens off the request cycle, never inline).
+Without Horizon running, nothing ever syncs — connects/sync-now requests just sit queued forever (V8: sync always happens off the request cycle, never inline). Once it's running, the dashboard is at `/horizon` on your API domain (HTTP Basic Auth, credentials above).
 
 ### CORS
 
