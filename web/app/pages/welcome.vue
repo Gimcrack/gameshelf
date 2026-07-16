@@ -5,7 +5,7 @@ const steps = [
     body: 'Link your Steam and GOG accounts. GameBower pulls every game you own, automatically.'
   },
   {
-    title: 'One shelf',
+    title: 'One bower',
     body: 'The same game on two stores becomes one entry. Playtime, genres, and covers included.'
   },
   {
@@ -54,7 +54,7 @@ const spines = [
       </div>
       <h1 class="mx-auto max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
         Every game you own.
-        <span class="text-teal-400">One shelf.</span>
+        <span class="text-teal-400">One bower.</span>
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg text-slate-400">
         Your library is scattered across Steam and GOG. GameBower gathers it in one
@@ -65,7 +65,7 @@ const spines = [
           to="/register"
           class="rounded-md bg-teal-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
         >
-          Start your shelf
+          Build your bower
         </NuxtLink>
         <NuxtLink to="/login" class="text-sm text-slate-400 hover:text-teal-300">
           I have an account

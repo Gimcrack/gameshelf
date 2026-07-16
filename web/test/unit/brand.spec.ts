@@ -68,3 +68,10 @@ describe('logo spans replaced by BrandWordmark (T42→T43)', () => {
     expect(welcome).toContain('<BrandMark')
   })
 })
+
+describe('welcome.vue copy (SPEC B20/T61)', () => {
+  it('has no leftover "shelf" metaphor copy from the old GameShelf name', async () => {
+    const welcome = await read('../../app/pages/welcome.vue')
+    expect(welcome.toLowerCase()).not.toContain('shelf')
+  })
+})
