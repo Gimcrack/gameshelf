@@ -14,19 +14,24 @@ const steps = [
   }
 ] as const
 
-const spines = [
-  'h-24 bg-teal-500/80',
-  'h-28 bg-slate-700',
-  'h-20 bg-slate-600',
-  'h-28 bg-teal-400/70',
-  'h-24 bg-slate-700',
-  'h-32 bg-slate-600',
-  'h-24 bg-teal-600/70',
-  'h-28 bg-slate-700',
-  'h-20 bg-teal-300/60',
-  'h-28 bg-slate-600',
-  'h-24 bg-slate-700',
-  'h-32 bg-teal-500/70'
+// T62/§C.brand: Nest Hex honeycomb strip — replaces the old book-spine bar
+// (leftover pre-rebrand visual). Fixed hex aspect ratio (unlike the old
+// bar's tall/thin bars — a stretched hexagon just reads as a lozenge);
+// alternating rows echo real honeycomb tessellation. Colors cycle the
+// brand palette.
+const hexTiles = [
+  'bg-teal-500/80',
+  'bg-slate-700',
+  'bg-violet-400/70',
+  'bg-teal-400/70',
+  'bg-slate-600',
+  'bg-teal-600/70',
+  'bg-violet-500/70',
+  'bg-slate-700',
+  'bg-teal-300/70',
+  'bg-slate-600',
+  'bg-teal-500/70',
+  'bg-violet-400/60'
 ] as const
 </script>
 
@@ -72,15 +77,12 @@ const spines = [
         </NuxtLink>
       </div>
 
-      <div
-        class="mt-14 flex items-end justify-center gap-1.5 border-b-4 border-slate-800 pb-0"
-        aria-hidden="true"
-      >
+      <div class="mt-14 flex items-center justify-center gap-1" aria-hidden="true">
         <div
-          v-for="(spine, i) in spines"
+          v-for="(tile, i) in hexTiles"
           :key="i"
-          class="w-4 rounded-t-sm sm:w-5"
-          :class="spine"
+          class="hex-tile size-9 shrink-0 sm:size-11"
+          :class="[tile, i % 2 === 1 ? 'translate-y-3 sm:translate-y-4' : '']"
         />
       </div>
     </section>
@@ -101,3 +103,10 @@ const spines = [
     </footer>
   </main>
 </template>
+
+<style scoped>
+/* T62: flat-top/bottom hexagon, echoes BrandMark's nested-hex shape. */
+.hex-tile {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+</style>
