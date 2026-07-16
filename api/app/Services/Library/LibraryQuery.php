@@ -561,6 +561,20 @@ class LibraryQuery
                 fn (array $e) => $e['time_to_beat_minutes'] !== null
                     && $e['time_to_beat_minutes'] < SystemCollections::QUICK_WIN_MAX_MINUTES,
             ),
+            // T71: 4 and 5-star personal ratings.
+            'favorites' => $entries->filter(
+                fn (array $e) => $e['rating'] !== null
+                    && $e['rating'] >= SystemCollections::FAVORITES_MIN_RATING,
+            ),
+            // T71/V69: conditional on achievement data being present AND
+            // total>0 — a 0/0 game (achievement-capable, 0 defs) is never
+            // silently counted as 100% complete.
+            'achievement_hunt' => $entries->filter(
+                fn (array $e) => $e['achievements_summary'] !== null
+                    && $e['achievements_summary']['total'] > 0
+                    && ($e['achievements_summary']['unlocked'] / $e['achievements_summary']['total'])
+                        >= SystemCollections::ACHIEVEMENT_HUNT_MIN_RATIO,
+            ),
         };
     }
 

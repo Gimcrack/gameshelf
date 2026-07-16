@@ -3,7 +3,9 @@
 namespace Tests\Feature\Library;
 
 use App\Models\Game;
+use App\Models\GameAchievementDef;
 use App\Models\OwnedGame;
+use App\Models\OwnedGameAchievement;
 use App\Models\PlatformConnection;
 use App\Models\User;
 use App\Models\UserGameMeta;
@@ -54,6 +56,28 @@ class SmartCollectionsTest extends TestCase
             'game_id' => $game->id,
             ...$attrs,
         ]);
+    }
+
+    /**
+     * @param  int  $unlockedCount  How many of $totalDefs achievement defs to mark unlocked.
+     */
+    private function withAchievements(OwnedGame $ownedGame, int $totalDefs, int $unlockedCount): void
+    {
+        for ($i = 0; $i < $totalDefs; $i++) {
+            $def = GameAchievementDef::create([
+                'platform' => 'steam',
+                'platform_game_id' => $ownedGame->platform_game_id,
+                'api_name' => "ACH_{$i}",
+                'name' => "Achievement {$i}",
+                'fetched_at' => now(),
+            ]);
+
+            OwnedGameAchievement::create([
+                'owned_game_id' => $ownedGame->id,
+                'game_achievement_def_id' => $def->id,
+                'unlocked' => $i < $unlockedCount,
+            ]);
+        }
     }
 
     /** @return list<string> */
@@ -148,6 +172,46 @@ class SmartCollectionsTest extends TestCase
     public function test_unknown_collection_rejected(): void
     {
         $this->getJson('/api/library?collection=nonsense')->assertUnprocessable();
+    }
+
+    /**
+     * T71: "My Favorites" — 4 and 5-star ratings only.
+     */
+    public function test_favorites_collection(): void
+    {
+        $fiveStar = $this->own('Five Star');
+        $this->meta($fiveStar, ['rating' => 5]);
+        $fourStar = $this->own('Four Star');
+        $this->meta($fourStar, ['rating' => 4]);
+        $threeStar = $this->own('Three Star');
+        $this->meta($threeStar, ['rating' => 3]);
+        $this->own('No Rating');
+
+        $this->assertSame(['Five Star', 'Four Star'], $this->titles('collection=favorites'));
+    }
+
+    /**
+     * T71/V69: "Achievement Hunt" — 50%+ unlocked, with a zero-total guard
+     * (a Steam-owned game that genuinely has 0 achievement defs is never
+     * counted as 0/0 = 100% complete).
+     */
+    public function test_achievement_hunt_collection(): void
+    {
+        $halfway = $this->own('Halfway There');
+        $this->withAchievements(
+            OwnedGame::where('user_id', $this->user->id)->where('game_id', $halfway->id)->firstOrFail(),
+            totalDefs: 4,
+            unlockedCount: 2,
+        );
+        $mostlyLocked = $this->own('Mostly Locked');
+        $this->withAchievements(
+            OwnedGame::where('user_id', $this->user->id)->where('game_id', $mostlyLocked->id)->firstOrFail(),
+            totalDefs: 4,
+            unlockedCount: 1,
+        );
+        $this->own('No Achievements At All');
+
+        $this->assertSame(['Halfway There'], $this->titles('collection=achievement_hunt'));
     }
 
     /**

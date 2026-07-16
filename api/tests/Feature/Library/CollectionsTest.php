@@ -28,7 +28,10 @@ class CollectionsTest extends TestCase
         $response = $this->getJson('/api/collections')->assertOk();
 
         $slugs = array_column($response->json('system'), 'slug');
-        $this->assertSame(['unplayed', 'abandoned', 'quick_wins'], $slugs);
+        $this->assertSame(
+            ['unplayed', 'abandoned', 'quick_wins', 'favorites', 'achievement_hunt'],
+            $slugs,
+        );
     }
 
     public function test_creates_and_lists_custom_collection(): void
