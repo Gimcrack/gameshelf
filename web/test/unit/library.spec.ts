@@ -8,6 +8,7 @@ import {
   libraryStatusLabel,
   nextRating,
   ratingStars,
+  showsPlaytime,
   type LibraryEntry
 } from '../../app/utils/library'
 
@@ -228,6 +229,16 @@ describe('hasManualEntry', () => {
       ]
     })
     expect(hasManualEntry(manual)).toBe(true)
+  })
+})
+
+describe('showsPlaytime', () => {
+  // T55/V53: playtime doesn't apply to unowned (wishlist/none) entries.
+  it('shows for owned and free, hides for wishlist and none', () => {
+    expect(showsPlaytime(entry({ library_status: 'owned' }))).toBe(true)
+    expect(showsPlaytime(entry({ library_status: 'free' }))).toBe(true)
+    expect(showsPlaytime(entry({ library_status: 'wishlist' }))).toBe(false)
+    expect(showsPlaytime(entry({ library_status: 'none' }))).toBe(false)
   })
 })
 

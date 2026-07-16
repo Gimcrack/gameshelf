@@ -6,6 +6,7 @@ import {
   hasManualEntry,
   nextRating,
   ratingStars,
+  showsPlaytime,
   type LibraryEntry
 } from '../utils/library'
 import type { Collection } from '../composables/useCollections'
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
 const manual = computed(() => hasManualEntry(props.entry))
+const showPlaytime = computed(() => showsPlaytime(props.entry))
 const playtimeLabel = computed(() => formatPlaytime(props.entry.total_playtime_minutes))
 const stars = computed(() => ratingStars(props.entry.rating))
 const selectedCollectionId = ref<number | null>(null)
@@ -56,7 +58,7 @@ function onAddToCollection(): void {
       <h3 class="mb-1 text-sm font-semibold leading-snug text-slate-100">
         <NuxtLink :to="`/games/${entry.id}`" class="hover:text-teal-300">{{ entry.title }}</NuxtLink>
       </h3>
-      <p class="mb-1.5 text-xs text-teal-300/90">{{ playtimeLabel }}</p>
+      <p v-if="showPlaytime" class="mb-1.5 text-xs text-teal-300/90">{{ playtimeLabel }}</p>
       <div class="mb-1.5 flex gap-0.5" role="group" aria-label="Rating">
         <button
           v-for="star in stars"

@@ -215,3 +215,8 @@ export function hasDisconnectedPlatform(entry: LibraryEntry): boolean {
 export function hasManualEntry(entry: LibraryEntry): boolean {
   return entry.platforms.some((p) => p.platform === 'manual')
 }
+
+/** T55/V53: playtime doesn't apply to unowned entries — owned|free only. */
+export function showsPlaytime(entry: LibraryEntry): boolean {
+  return entry.library_status === 'owned' || entry.library_status === 'free'
+}

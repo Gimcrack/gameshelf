@@ -5,6 +5,7 @@ import {
   formatPlaytime,
   hasDisconnectedPlatform,
   libraryStatusLabel,
+  showsPlaytime,
   type GameStatus,
   type LibraryEntry
 } from '../../utils/library'
@@ -180,7 +181,7 @@ async function onSave(): Promise<void> {
 
         <div class="mb-4 flex flex-wrap gap-3 text-xs text-slate-400">
           <span v-if="entry.release_date">Released {{ entry.release_date }}</span>
-          <span>{{ formatPlaytime(entry.total_playtime_minutes) }}</span>
+          <span v-if="showsPlaytime(entry)">{{ formatPlaytime(entry.total_playtime_minutes) }}</span>
           <span v-if="entry.time_to_beat_minutes !== null">
             Time to beat: {{ formatPlaytime(entry.time_to_beat_minutes) }}
           </span>
