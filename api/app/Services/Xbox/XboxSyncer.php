@@ -13,6 +13,7 @@ class XboxSyncer
     public function __construct(
         private readonly XboxClient $client,
         private readonly XboxTokenManager $tokens,
+        private readonly XboxAchievementSyncer $achievementSyncer,
     ) {
     }
 
@@ -43,7 +44,7 @@ class XboxSyncer
         $capturedAt = Date::now();
 
         foreach ($games as $title) {
-            $this->ingestTitle($connection, $title, $capturedAt);
+            $this->ingestTitle($connection, $title, $capturedAt, $credentials);
         }
 
         $currentTitleIds = array_map(fn (array $t) => (string) $t['titleId'], $games);
@@ -60,11 +61,13 @@ class XboxSyncer
 
     /**
      * @param  array<string, mixed>  $title
+     * @param  array{xsts_token: string, user_hash: string, xuid: string}  $credentials
      */
     private function ingestTitle(
         PlatformConnection $connection,
         array $title,
         \DateTimeInterface $capturedAt,
+        array $credentials,
     ): void {
         $platformGameId = (string) $title['titleId'];
 
@@ -77,7 +80,7 @@ class XboxSyncer
         ])->id;
 
         // V10: keyed on (platform_connection_id, platform_game_id) — upsert only.
-        OwnedGame::updateOrCreate(
+        $ownedGame = OwnedGame::updateOrCreate(
             [
                 'platform_connection_id' => $connection->id,
                 'platform_game_id' => $platformGameId,
@@ -88,6 +91,14 @@ class XboxSyncer
                 'playtime_minutes' => null,
                 'added_at' => $existing?->added_at ?? $capturedAt,
             ],
+        );
+
+        // T69/V63: 1 call yields both defs + unlock state, best-effort (V66).
+        $this->achievementSyncer->sync(
+            $ownedGame,
+            $credentials['xuid'],
+            $credentials['xsts_token'],
+            $credentials['user_hash'],
         );
     }
 }

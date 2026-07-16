@@ -22,6 +22,8 @@ class XboxClient
 
     private const TITLEHUB_URL = 'https://titlehub.xboxlive.com';
 
+    private const ACHIEVEMENTS_URL = 'https://achievements.xboxlive.com';
+
     public const SCOPE = 'XboxLive.signin offline_access';
 
     public function __construct(
@@ -134,6 +136,48 @@ class XboxClient
         }
 
         return $response->json('titles', []);
+    }
+
+    /**
+     * T69/V63: 1 call returns both def AND unlock state per achievement,
+     * unlike Steam's 2-call split (schema + per-user). Filtered to a single
+     * title via `titleId` — mirrors Steam's per-appid GetPlayerAchievements
+     * shape, called once per Xbox owned_games row every sync.
+     *
+     * @return list<array{api_name: string, name: string, description: ?string, icon_url: ?string, points: ?int, achieved: bool, unlocked_at: ?string}>
+     */
+    public function getAchievements(string $xuid, string $xstsToken, string $userHash, string $titleId): array
+    {
+        $response = Http::withHeaders([
+            'Authorization' => "XBL3.0 x={$userHash};{$xstsToken}",
+            'x-xbl-contract-version' => '2',
+        ])->get(self::ACHIEVEMENTS_URL."/users/xuid({$xuid})/achievements", [
+            'titleId' => $titleId,
+        ]);
+
+        if ($response->failed()) {
+            throw new RuntimeException('Xbox achievements request failed: '.$response->status());
+        }
+
+        $achievements = $response->json('achievements', []);
+
+        return array_map(function (array $a) {
+            $achieved = ($a['progressState'] ?? null) === 'Achieved';
+            $gamerscore = collect($a['rewards'] ?? [])->firstWhere('type', 'Gamerscore');
+            $icon = collect($a['mediaAssets'] ?? [])->firstWhere('type', 'Icon');
+
+            return [
+                'api_name' => (string) $a['id'],
+                'name' => $a['name'],
+                'description' => $a['description'] ?? null,
+                'icon_url' => $icon['url'] ?? null,
+                'points' => $gamerscore !== null ? (int) $gamerscore['value'] : null,
+                'achieved' => $achieved,
+                // Locked achievements can carry a placeholder timeUnlocked —
+                // only trust it when actually achieved.
+                'unlocked_at' => $achieved ? ($a['progression']['timeUnlocked'] ?? null) : null,
+            ];
+        }, $achievements);
     }
 
     /**

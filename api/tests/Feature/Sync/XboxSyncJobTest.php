@@ -278,4 +278,86 @@ class XboxSyncJobTest extends TestCase
         $this->assertSame(1, Game::count());
         $this->assertDatabaseHas('games', ['igdb_id' => 358827]);
     }
+
+    /**
+     * T69/V63: 1 achievements.xboxlive.com call yields both the def
+     * (game_achievement_defs) and the unlock state (owned_game_achievements),
+     * unlike Steam's 2-call split.
+     */
+    public function test_syncs_xbox_achievements_def_and_unlock_state_in_one_call(): void
+    {
+        Http::fake([
+            'titlehub.xboxlive.com/*' => Http::response(['xuid' => self::XUID, 'titles' => [
+                ['titleId' => '1153748408', 'name' => 'Forza Horizon 5', 'type' => 'Game'],
+            ]]),
+            'achievements.xboxlive.com/*' => Http::response(['achievements' => [
+                [
+                    'id' => 1,
+                    'name' => 'Speed Demon',
+                    'description' => 'Reach top speed.',
+                    'progressState' => 'Achieved',
+                    'progression' => ['timeUnlocked' => '2026-01-05T16:33:36.6030000Z'],
+                    'rewards' => [['type' => 'Gamerscore', 'value' => '20']],
+                    'mediaAssets' => [['type' => 'Icon', 'url' => 'https://example.com/icon.jpg']],
+                ],
+                [
+                    'id' => 2,
+                    'name' => 'Collector',
+                    'description' => 'Collect everything.',
+                    'progressState' => 'NotStarted',
+                    'progression' => ['timeUnlocked' => '9999-12-31T00:00:00Z'],
+                    'rewards' => [['type' => 'Gamerscore', 'value' => '50']],
+                    'mediaAssets' => [],
+                ],
+            ]]),
+            ...$this->fakeXstsChain(),
+            ...$this->fakeIgdbMiss(),
+        ]);
+        $connection = $this->xboxConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseHas('game_achievement_defs', [
+            'platform' => 'xbox',
+            'platform_game_id' => '1153748408',
+            'api_name' => '1',
+            'name' => 'Speed Demon',
+            'points' => 20,
+        ]);
+        $ownedGame = \App\Models\OwnedGame::where('platform_game_id', '1153748408')->firstOrFail();
+        $this->assertDatabaseHas('owned_game_achievements', [
+            'owned_game_id' => $ownedGame->id,
+            'unlocked' => 1,
+        ]);
+        // Locked achievement's placeholder timeUnlocked is never trusted.
+        $this->assertDatabaseHas('owned_game_achievements', [
+            'owned_game_id' => $ownedGame->id,
+            'unlocked' => 0,
+            'unlocked_at' => null,
+        ]);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'achievements.xboxlive.com')
+            && $request->hasHeader('x-xbl-contract-version', '2')
+            && $request['titleId'] === '1153748408');
+    }
+
+    /**
+     * V66: a transient achievements-endpoint failure never fails the sync.
+     */
+    public function test_xbox_achievement_fetch_failure_does_not_fail_sync(): void
+    {
+        Http::fake([
+            'titlehub.xboxlive.com/*' => Http::response(['xuid' => self::XUID, 'titles' => [
+                ['titleId' => '1153748408', 'name' => 'Forza Horizon 5', 'type' => 'Game'],
+            ]]),
+            'achievements.xboxlive.com/*' => Http::response(null, 500),
+            ...$this->fakeXstsChain(),
+            ...$this->fakeIgdbMiss(),
+        ]);
+        $connection = $this->xboxConnection();
+
+        $this->runSync($connection);
+
+        $this->assertSame('ok', $connection->fresh()->status->value);
+        $this->assertDatabaseCount('owned_game_achievements', 0);
+    }
 }
