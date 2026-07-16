@@ -3,6 +3,7 @@
 namespace App\Services\Gog;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class GogClient
@@ -136,6 +137,16 @@ class GogClient
         ]);
 
         if ($response->status() === 400 || $response->status() === 401) {
+            // B19/V56: GOG's actual error (invalid_client/invalid_grant/
+            // invalid_request) collapses to a single generic "code rejected"
+            // message for the user — log the real body so a credential
+            // mismatch isn't indistinguishable from an expired code.
+            Log::warning('GOG token request rejected', [
+                'grant_type' => $params['grant_type'],
+                'status' => $response->status(),
+                'body' => $response->json(),
+            ]);
+
             return null;
         }
 
