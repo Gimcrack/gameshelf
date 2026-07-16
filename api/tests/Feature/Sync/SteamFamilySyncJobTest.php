@@ -152,4 +152,40 @@ class SteamFamilySyncJobTest extends TestCase
         $this->assertDatabaseCount('owned_games', 1);
         $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620']);
     }
+
+    /**
+     * T67/V65: shared-appid achievement defs are fetched too - T68's unlock
+     * sync (caller's own steamid) needs them, and shared games are excluded
+     * from SteamSyncer's own ingestion, so this is the only path that would.
+     */
+    public function test_fetches_achievement_definitions_for_shared_games(): void
+    {
+        $this->fakeOwnedGames([
+            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 5000],
+        ]);
+        $connection = $this->familyConnection();
+        Http::fake([
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '620' => ['success' => true, 'data' => ['categories' => [['id' => 62]]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseHas('game_achievement_defs', [
+            'platform' => 'steam',
+            'platform_game_id' => '620',
+            'api_name' => 'TOWER_OF_ROCKETS',
+        ]);
+    }
 }

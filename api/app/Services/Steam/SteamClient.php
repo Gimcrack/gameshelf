@@ -208,6 +208,36 @@ class SteamClient
     }
 
     /**
+     * Achievement definitions for an appid (T67/I.ext) — cached forever,
+     * mirrors appName/appCategoryIds: schemas don't churn once a game ships.
+     * Games with no achievements return an empty list (not an error).
+     *
+     * @return list<array{api_name: string, name: string, description: ?string, icon_url: ?string}>
+     */
+    public function getSchemaForGame(int $appId): array
+    {
+        return Cache::rememberForever("steam-achievement-schema:{$appId}", function () use ($appId) {
+            $response = Http::get(self::BASE_URL.'/ISteamUserStats/GetSchemaForGame/v2/', [
+                'key' => $this->apiKey,
+                'appid' => $appId,
+            ]);
+
+            if ($response->failed()) {
+                throw new RuntimeException('Steam GetSchemaForGame request failed: '.$response->status());
+            }
+
+            $achievements = $response->json('game.availableGameStats.achievements') ?? [];
+
+            return array_map(fn (array $a) => [
+                'api_name' => $a['name'],
+                'name' => $a['displayName'] ?? $a['name'],
+                'description' => $a['description'] ?? null,
+                'icon_url' => $a['icon'] ?? null,
+            ], $achievements);
+        });
+    }
+
+    /**
      * Steam Deck compatibility for an appid — undocumented, unauthenticated
      * store endpoint (I.ext, T26). Refetched every call; the syncer decides
      * caching/retention (V31 best-effort). `resolved_category` 0-3 maps

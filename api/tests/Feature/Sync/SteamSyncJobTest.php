@@ -398,4 +398,102 @@ class SteamSyncJobTest extends TestCase
         $this->assertSame('ok', $connection->fresh()->status->value);
         $this->assertDatabaseHas('owned_games', ['platform_game_id' => '620', 'deck_status' => 'verified']);
     }
+
+    /**
+     * T67/V63: achievement definitions are fetched per Steam appid and
+     * stored keyed per (platform, platform_game_id), not the canonical game.
+     */
+    public function test_fetches_achievement_definitions_for_steam_games(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => 'Build a tower of rockets.', 'icon' => 'https://example.com/icon.jpg'],
+                ]]],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertDatabaseHas('game_achievement_defs', [
+            'platform' => 'steam',
+            'platform_game_id' => '620',
+            'api_name' => 'TOWER_OF_ROCKETS',
+            'name' => 'Tower of Rockets',
+            'description' => 'Build a tower of rockets.',
+            'icon_url' => 'https://example.com/icon.jpg',
+            'points' => null,
+        ]);
+    }
+
+    /**
+     * V66: a transient achievement-schema fetch failure never fails the sync.
+     */
+    public function test_achievement_def_fetch_failure_does_not_fail_sync(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response(null, 500),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertSame('ok', $connection->fresh()->status->value);
+        $this->assertDatabaseCount('game_achievement_defs', 0);
+    }
+
+    /**
+     * T67: GetSchemaForGame is cached forever client-side - a second sync for
+     * the same appid does not re-fetch (mirrors V4's cache-once class).
+     */
+    public function test_achievement_schema_not_refetched_on_second_sync(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+        $this->runSync($connection);
+
+        $this->assertCount(
+            1,
+            Http::recorded(fn ($request) => str_contains($request->url(), 'GetSchemaForGame')),
+        );
+    }
 }

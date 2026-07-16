@@ -16,8 +16,10 @@ use Illuminate\Support\Facades\Date;
  */
 class SteamFamilySyncer
 {
-    public function __construct(private readonly SteamClient $client)
-    {
+    public function __construct(
+        private readonly SteamClient $client,
+        private readonly SteamAchievementDefSyncer $achievementDefSyncer,
+    ) {
     }
 
     public function sync(PlatformConnection $connection): void
@@ -94,6 +96,10 @@ class SteamFamilySyncer
         \DateTimeInterface $capturedAt,
     ): void {
         $platformGameId = (string) $steamGame['appid'];
+
+        // T67/V65: defs are appid-level, needed here too since T68's unlock
+        // sync covers shared rows via the caller's own steamid.
+        $this->achievementDefSyncer->sync($platformGameId);
 
         $existing = OwnedGame::where('platform_connection_id', $connection->id)
             ->where('platform_game_id', $platformGameId)

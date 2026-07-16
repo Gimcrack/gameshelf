@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Date;
 
 class SteamSyncer
 {
-    public function __construct(private readonly SteamClient $client)
-    {
+    public function __construct(
+        private readonly SteamClient $client,
+        private readonly SteamAchievementDefSyncer $achievementDefSyncer,
+    ) {
     }
 
     /**
@@ -101,6 +103,10 @@ class SteamSyncer
         if ($deckStatus !== null) {
             $attributes['deck_status'] = $deckStatus;
         }
+
+        // T67: achievement definitions, keyed per appid (V63) - best-effort,
+        // never fails the sync.
+        $this->achievementDefSyncer->sync($platformGameId);
 
         // V10: keyed on (platform_connection_id, platform_game_id) — upsert only.
         $ownedGame = OwnedGame::updateOrCreate(
