@@ -14,6 +14,7 @@ class SteamSyncer
     public function __construct(
         private readonly SteamClient $client,
         private readonly SteamAchievementDefSyncer $achievementDefSyncer,
+        private readonly SteamPlayerAchievementSyncer $playerAchievementSyncer,
     ) {
     }
 
@@ -116,6 +117,9 @@ class SteamSyncer
             ],
             $attributes,
         );
+
+        // T68/V65: caller's own steamid throughout, not any family member's.
+        $this->playerAchievementSyncer->sync($ownedGame, $connection->external_account_id);
 
         // V16: snapshot every sync — only for games with actual playtime data.
         if ($playtime !== null) {

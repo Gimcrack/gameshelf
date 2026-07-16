@@ -238,6 +238,40 @@ class SteamClient
     }
 
     /**
+     * Per-user unlock state for an appid (T68/I.ext). Steam signals a
+     * private profile or a game with no stats via HTTP 400 + success=false
+     * (V15-style — a distinct "no answer" state, not an error to retry
+     * differently). Any other failure throws for the caller's best-effort
+     * handling (V66).
+     *
+     * @return list<array{api_name: string, achieved: bool, unlocked_at: ?int}>|null
+     */
+    public function getPlayerAchievements(string $steamId, int $appId): ?array
+    {
+        $response = Http::get(self::BASE_URL.'/ISteamUserStats/GetPlayerAchievements/v1/', [
+            'key' => $this->apiKey,
+            'steamid' => $steamId,
+            'appid' => $appId,
+        ]);
+
+        if ($response->status() === 400 && ($response->json('playerstats.success') === false)) {
+            return null;
+        }
+
+        if ($response->failed()) {
+            throw new RuntimeException('Steam GetPlayerAchievements request failed: '.$response->status());
+        }
+
+        $achievements = $response->json('playerstats.achievements') ?? [];
+
+        return array_map(fn (array $a) => [
+            'api_name' => $a['apiname'],
+            'achieved' => (bool) ($a['achieved'] ?? false),
+            'unlocked_at' => ($a['unlocktime'] ?? 0) > 0 ? (int) $a['unlocktime'] : null,
+        ], $achievements);
+    }
+
+    /**
      * Steam Deck compatibility for an appid — undocumented, unauthenticated
      * store endpoint (I.ext, T26). Refetched every call; the syncer decides
      * caching/retention (V31 best-effort). `resolved_category` 0-3 maps

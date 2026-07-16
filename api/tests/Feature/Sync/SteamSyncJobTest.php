@@ -496,4 +496,114 @@ class SteamSyncJobTest extends TestCase
             Http::recorded(fn ($request) => str_contains($request->url(), 'GetSchemaForGame')),
         );
     }
+
+    /**
+     * T68/V65: unlock state fetched with the connection's own steamid and
+     * stored against the matching achievement def (T67).
+     */
+    public function test_syncs_player_achievement_unlock_state(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetPlayerAchievements/*' => Http::response([
+                'playerstats' => [
+                    'success' => true,
+                    'achievements' => [
+                        ['apiname' => 'TOWER_OF_ROCKETS', 'achieved' => 1, 'unlocktime' => 1750000000],
+                    ],
+                ],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $ownedGame = OwnedGame::where('platform_game_id', '620')->firstOrFail();
+        $this->assertDatabaseHas('owned_game_achievements', [
+            'owned_game_id' => $ownedGame->id,
+            'unlocked' => 1,
+        ]);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'GetPlayerAchievements')
+            && $request['steamid'] === $connection->external_account_id);
+    }
+
+    /**
+     * V15/V66-style: a private profile (Steam's 400 + success=false) skips
+     * achievement sync for that row without failing the sync.
+     */
+    public function test_private_profile_skips_achievement_sync_without_failing(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetPlayerAchievements/*' => Http::response(
+                ['playerstats' => ['success' => false, 'error' => 'Profile is not public']],
+                400,
+            ),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertSame('ok', $connection->fresh()->status->value);
+        $this->assertDatabaseCount('owned_game_achievements', 0);
+    }
+
+    /**
+     * V66: a transient achievement-unlock fetch failure never fails the sync.
+     */
+    public function test_achievement_unlock_fetch_failure_does_not_fail_sync(): void
+    {
+        Http::fake([
+            'api.steampowered.com/IPlayerService/GetOwnedGames/*' => Http::response([
+                'response' => ['game_count' => 1, 'games' => [
+                    ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 1200],
+                ]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetPlayerAchievements/*' => Http::response(null, 500),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+        $connection = $this->steamConnection();
+
+        $this->runSync($connection);
+
+        $this->assertSame('ok', $connection->fresh()->status->value);
+        $this->assertDatabaseCount('owned_game_achievements', 0);
+    }
 }

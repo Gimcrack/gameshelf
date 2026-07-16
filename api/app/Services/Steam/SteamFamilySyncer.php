@@ -19,6 +19,7 @@ class SteamFamilySyncer
     public function __construct(
         private readonly SteamClient $client,
         private readonly SteamAchievementDefSyncer $achievementDefSyncer,
+        private readonly SteamPlayerAchievementSyncer $playerAchievementSyncer,
     ) {
     }
 
@@ -50,8 +51,16 @@ class SteamFamilySyncer
 
         $capturedAt = Date::now();
 
+        // T68/V65: achievement unlocks use the CALLER's own steamid, never
+        // the family member's - look it up once, not per game. A caller
+        // without their own direct Steam connection just gets no achievement
+        // data for shared rows (nothing to query against).
+        $callerSteamId = PlatformConnection::where('user_id', $connection->user_id)
+            ->where('platform', 'steam')
+            ->value('external_account_id');
+
         foreach ($shared as $steamGame) {
-            $this->ingestGame($connection, $steamGame, $capturedAt);
+            $this->ingestGame($connection, $steamGame, $capturedAt, $callerSteamId);
         }
 
         // V24-style prune, scoped to this connection only.
@@ -94,6 +103,7 @@ class SteamFamilySyncer
         PlatformConnection $connection,
         array $steamGame,
         \DateTimeInterface $capturedAt,
+        ?string $callerSteamId,
     ): void {
         $platformGameId = (string) $steamGame['appid'];
 
@@ -109,7 +119,7 @@ class SteamFamilySyncer
             'title' => $steamGame['name'] ?? "Steam app {$platformGameId}",
         ])->id;
 
-        OwnedGame::updateOrCreate(
+        $ownedGame = OwnedGame::updateOrCreate(
             [
                 'platform_connection_id' => $connection->id,
                 'platform_game_id' => $platformGameId,
@@ -124,5 +134,10 @@ class SteamFamilySyncer
                 'shared' => true,
             ],
         );
+
+        // T68/V65: caller's own steamid, not the family member's.
+        if ($callerSteamId !== null) {
+            $this->playerAchievementSyncer->sync($ownedGame, $callerSteamId);
+        }
     }
 }

@@ -188,4 +188,58 @@ class SteamFamilySyncJobTest extends TestCase
             'api_name' => 'TOWER_OF_ROCKETS',
         ]);
     }
+
+    /**
+     * T68/V65: shared-row achievement unlock uses the CALLER's own steamid
+     * (their direct steam connection), never the family member's.
+     */
+    public function test_shared_game_achievement_sync_uses_callers_own_steamid(): void
+    {
+        $connection = $this->familyConnection();
+        $callerSteamId = '76561197960211111';
+        PlatformConnection::factory()->create([
+            'user_id' => $connection->user_id,
+            'platform' => 'steam',
+            'external_account_id' => $callerSteamId,
+        ]);
+
+        $this->fakeOwnedGames([
+            ['appid' => 620, 'name' => 'Portal 2', 'playtime_forever' => 5000],
+        ]);
+        Http::fake([
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '620' => ['success' => true, 'data' => ['categories' => [['id' => 62]]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetSchemaForGame/*' => Http::response([
+                'game' => ['availableGameStats' => ['achievements' => [
+                    ['name' => 'TOWER_OF_ROCKETS', 'displayName' => 'Tower of Rockets', 'description' => null, 'icon' => null],
+                ]]],
+            ]),
+            'api.steampowered.com/ISteamUserStats/GetPlayerAchievements/*' => Http::response([
+                'playerstats' => [
+                    'success' => true,
+                    'achievements' => [
+                        ['apiname' => 'TOWER_OF_ROCKETS', 'achieved' => 1, 'unlocktime' => 1750000000],
+                    ],
+                ],
+            ]),
+            'id.twitch.tv/oauth2/token*' => Http::response([
+                'access_token' => 'twitch-app-token',
+                'expires_in' => 3600,
+            ]),
+            'api.igdb.com/v4/games' => Http::response([]),
+        ]);
+
+        $this->runSync($connection);
+
+        $ownedGame = OwnedGame::where('platform_game_id', '620')->firstOrFail();
+        $this->assertDatabaseHas('owned_game_achievements', [
+            'owned_game_id' => $ownedGame->id,
+            'unlocked' => 1,
+        ]);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'GetPlayerAchievements')
+            && $request['steamid'] === $callerSteamId);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'GetPlayerAchievements')
+            && $request['steamid'] === self::MEMBER_STEAM_ID);
+    }
 }
