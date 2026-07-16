@@ -5,6 +5,10 @@ import { unifiedGameModeOptions } from '~/utils/facets'
 
 const props = defineProps<{ facets: LibraryFacets }>()
 
+// T44: parent owns the save (name prompt + POST) since it also holds the
+// toolbar filters (q/sort); the sidebar just surfaces the affordance.
+const emit = defineEmits<{ save: [] }>()
+
 const gameModeOptions = computed(() => unifiedGameModeOptions(props.facets.game_modes))
 
 const platforms = defineModel<string[]>('platforms', { default: () => [] })
@@ -48,6 +52,22 @@ const RATING_LABELS: Record<string, string> = {
   5: '★★★★★',
   none: 'Unrated'
 }
+
+// T44: the "Save as collection" affordance shows only when ≥1 sidebar filter
+// is active — an empty preset isn't worth saving.
+const hasActiveFilters = computed(
+  () =>
+    platforms.value.length > 0 ||
+    genres.value.length > 0 ||
+    themes.value.length > 0 ||
+    keywords.value.length > 0 ||
+    gameModes.value.length > 0 ||
+    deckStatuses.value.length > 0 ||
+    esrb.value.length > 0 ||
+    libraryStatuses.value.length > 0 ||
+    ratings.value.length > 0 ||
+    unplayed.value
+)
 </script>
 
 <template>
@@ -77,5 +97,14 @@ const RATING_LABELS: Record<string, string> = {
         Show hidden
       </label>
     </div>
+
+    <button
+      v-if="hasActiveFilters"
+      type="button"
+      class="rounded-md border border-teal-400/50 px-3 py-1.5 text-sm font-medium text-teal-300 transition hover:border-teal-400 hover:text-teal-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
+      @click="emit('save')"
+    >
+      Save as collection
+    </button>
   </aside>
 </template>

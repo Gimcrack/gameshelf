@@ -14,12 +14,18 @@ use Symfony\Component\HttpFoundation\Response;
 class CollectionController extends Controller
 {
     /**
-     * Filter keys a saved preset may contain — the /api/library filter
-     * vocabulary, minus `collection` itself (no recursive presets).
+     * Filter keys a saved preset may contain — the full /api/library sidebar
+     * vocabulary, minus `collection` itself (no recursive presets). V44: every
+     * param the sidebar can emit must round-trip, so current sidebar state is
+     * saveable verbatim with no silent key drop. Extended T44 (+ deck_status,
+     * esrb, multiplayer, coop, local_multiplayer, local_coop, q; and the
+     * T38/T40 sidebar keys library_status, rating).
      */
     private const ALLOWED_FILTER_KEYS = [
         'sort', 'order', 'platform', 'genre', 'theme', 'keyword', 'game_mode',
         'status', 'tags', 'unplayed', 'playtime_min', 'playtime_max',
+        'deck_status', 'esrb', 'multiplayer', 'coop', 'local_multiplayer',
+        'local_coop', 'q', 'library_status', 'rating',
     ];
 
     public function index(Request $request): JsonResponse

@@ -4,6 +4,7 @@ import {
   formatPlaytime,
   hasDisconnectedPlatform,
   hasManualEntry,
+  libraryFiltersToPreset,
   nextRating,
   ratingStars,
   type LibraryEntry
@@ -110,6 +111,58 @@ describe('buildLibraryQuery', () => {
     const params = new URLSearchParams(buildLibraryQuery({ rating: ['5', 'none'] }))
     expect(params.getAll('rating[]')).toEqual(['5', 'none'])
     expect(buildLibraryQuery({ rating: [] })).toBe('')
+  })
+
+  // T44: collection param drives server-side preset expansion.
+  it('maps collection to a collection param', () => {
+    expect(buildLibraryQuery({ collection: 'unplayed' })).toBe('collection=unplayed')
+    expect(buildLibraryQuery({ collection: '42' })).toBe('collection=42')
+  })
+})
+
+// T44/V44: preset serialisation for "Save as collection".
+describe('libraryFiltersToPreset', () => {
+  it('maps active filters to snake_case preset keys', () => {
+    const preset = libraryFiltersToPreset({
+      sort: 'alpha',
+      order: 'asc',
+      platform: 'steam,gog',
+      genre: 'RPG',
+      gameMode: 'Single player',
+      unplayed: true,
+      deckStatus: ['verified'],
+      esrb: ['M', 'none'],
+      libraryStatus: ['owned'],
+      rating: ['5'],
+      multiplayer: true,
+      localCoop: true,
+      q: 'witch'
+    })
+
+    expect(preset).toEqual({
+      sort: 'alpha',
+      order: 'asc',
+      platform: 'steam,gog',
+      genre: 'RPG',
+      game_mode: 'Single player',
+      unplayed: true,
+      deck_status: ['verified'],
+      esrb: ['M', 'none'],
+      library_status: ['owned'],
+      rating: ['5'],
+      multiplayer: true,
+      local_coop: true,
+      q: 'witch'
+    })
+  })
+
+  // The view-only toggle and the collection param are never part of a preset.
+  it('excludes includeHidden and collection', () => {
+    expect(libraryFiltersToPreset({ includeHidden: true, collection: '3' })).toEqual({})
+  })
+
+  it('omits empty multi-selects and unset scalars', () => {
+    expect(libraryFiltersToPreset({ deckStatus: [], esrb: [], unplayed: false })).toEqual({})
   })
 })
 

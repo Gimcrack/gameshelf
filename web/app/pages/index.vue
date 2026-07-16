@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import type { DeckStatus, LibraryFilters, LibrarySort, LibraryStatus } from '../utils/library'
+import { libraryFiltersToPreset } from '../utils/library'
 import { splitGameModeSelection } from '../utils/facets'
 
 const { user, logout, fetchUser } = useAuth()
 const { entries, facets, pending, error, fetchLibrary, fetchFacets, removeManual, updateMeta } = useLibrary()
-const { collections, fetchCollections, addGame } = useCollections()
+const { collections, system, fetchCollections, addGame, createFilterCollection } = useCollections()
 
 const manualCollections = computed(() => collections.value.filter((c) => c.type === 'manual'))
+// T44: filter collections are the ones the library picker can re-apply.
+const filterCollections = computed(() => collections.value.filter((c) => c.type === 'filter'))
+const selectedCollection = ref('')
 
 const isLoggingOut = ref(false)
 
@@ -44,7 +48,10 @@ const filters = computed<LibraryFilters>(() => {
     ...(deckStatuses.value.length ? { deckStatus: deckStatuses.value } : {}),
     ...(esrb.value.length ? { esrb: esrb.value } : {}),
     ...(libraryStatuses.value.length ? { libraryStatus: libraryStatuses.value } : {}),
-    ...(ratings.value.length ? { rating: ratings.value } : {})
+    ...(ratings.value.length ? { rating: ratings.value } : {}),
+    // T44: a selected collection expands server-side; explicit filters above
+    // still win (LibraryController.resolveCollection).
+    ...(selectedCollection.value ? { collection: selectedCollection.value } : {})
   }
 })
 
@@ -67,6 +74,20 @@ async function onRemoveManual(gameId: number): Promise<void> {
 
 async function onAddToCollection(collectionId: number, gameId: number): Promise<void> {
   await addGame(collectionId, gameId)
+}
+
+// T44: name-prompt → save the active sidebar filters as a smart collection,
+// then select it so the grid reflects the saved preset.
+async function onSaveCollection(): Promise<void> {
+  const name = window.prompt('Name this collection')?.trim()
+  if (!name) return
+
+  try {
+    const created = await createFilterCollection(name, libraryFiltersToPreset(filters.value))
+    selectedCollection.value = String(created.id)
+  } catch (err) {
+    error.value = (err as { message?: string }).message ?? 'Could not save collection.'
+  }
 }
 
 async function onToggleHidden(gameId: number, hidden: boolean): Promise<void> {
@@ -130,6 +151,7 @@ async function onLogout(): Promise<void> {
         v-model:ratings="ratings"
         v-model:unplayed="unplayed"
         v-model:show-hidden="showHidden"
+        @save="onSaveCollection"
       />
 
       <div class="min-w-0 flex-1">
@@ -163,6 +185,23 @@ async function onLogout(): Promise<void> {
             >
               <option value="asc">Ascending</option>
               <option value="desc">Descending</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-1">
+            Collection
+            <select
+              v-model="selectedCollection"
+              class="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-slate-100 focus:border-teal-400 focus:outline-none"
+            >
+              <option value="">All games</option>
+              <optgroup v-if="system.length" label="Smart">
+                <option v-for="c in system" :key="c.slug" :value="c.slug">{{ c.name }}</option>
+              </optgroup>
+              <optgroup v-if="filterCollections.length" label="Saved">
+                <option v-for="c in filterCollections" :key="c.id" :value="String(c.id)">
+                  {{ c.name }}
+                </option>
+              </optgroup>
             </select>
           </label>
         </section>

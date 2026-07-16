@@ -81,6 +81,9 @@ export interface LibraryFilters {
   localMultiplayer?: boolean
   localCoop?: boolean
   q?: string
+  // T44: system slug | custom collection id — the API expands a saved
+  // filter preset, with explicit params winning (LibraryController).
+  collection?: string
 }
 
 export interface LibraryFacets {
@@ -117,8 +120,42 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')
   if (filters.localCoop) params.set('local_coop', '1')
   if (filters.q) params.set('q', filters.q)
+  if (filters.collection) params.set('collection', filters.collection)
 
   return params.toString()
+}
+
+/**
+ * T44/V44: serialise the active sidebar filter state into a snake_case preset
+ * object for POST /api/collections {type: 'filter', filters}. Mirrors
+ * buildLibraryQuery's key mapping so a saved collection re-checks the same
+ * facets. `collection` and the `include_hidden` view toggle are excluded — a
+ * preset is filters only, not a nested collection or a view setting.
+ */
+export function libraryFiltersToPreset(filters: LibraryFilters): Record<string, unknown> {
+  const preset: Record<string, unknown> = {}
+
+  if (filters.sort) preset.sort = filters.sort
+  if (filters.order) preset.order = filters.order
+  if (filters.platform) preset.platform = filters.platform
+  if (filters.genre) preset.genre = filters.genre
+  if (filters.theme) preset.theme = filters.theme
+  if (filters.keyword) preset.keyword = filters.keyword
+  if (filters.gameMode) preset.game_mode = filters.gameMode
+  if (filters.playtimeMin !== undefined) preset.playtime_min = filters.playtimeMin
+  if (filters.playtimeMax !== undefined) preset.playtime_max = filters.playtimeMax
+  if (filters.unplayed) preset.unplayed = true
+  if (filters.deckStatus?.length) preset.deck_status = filters.deckStatus
+  if (filters.esrb?.length) preset.esrb = filters.esrb
+  if (filters.libraryStatus?.length) preset.library_status = filters.libraryStatus
+  if (filters.rating?.length) preset.rating = filters.rating
+  if (filters.multiplayer) preset.multiplayer = true
+  if (filters.coop) preset.coop = true
+  if (filters.localMultiplayer) preset.local_multiplayer = true
+  if (filters.localCoop) preset.local_coop = true
+  if (filters.q) preset.q = filters.q
+
+  return preset
 }
 
 const DECK_STATUS_LABELS: Record<DeckStatus, string> = {

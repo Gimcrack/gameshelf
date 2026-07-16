@@ -94,6 +94,72 @@ class CollectionsTest extends TestCase
             ->assertJsonValidationErrors(['filters']);
     }
 
+    /**
+     * T44/V44: every param the sidebar can emit round-trips into a saved filter
+     * collection — no silent key drop. Guards against a facet being added to
+     * the sidebar without being whitelisted.
+     */
+    public function test_full_sidebar_vocabulary_saves_verbatim(): void
+    {
+        $filters = [
+            'sort' => 'alpha', 'order' => 'asc', 'platform' => 'steam',
+            'genre' => 'RPG', 'theme' => 'Fantasy', 'keyword' => 'dragon',
+            'game_mode' => 'Single player', 'status' => 'unplayed', 'tags' => 'fav',
+            'unplayed' => true, 'playtime_min' => 0, 'playtime_max' => 100,
+            'deck_status' => ['verified'], 'esrb' => ['M', 'none'],
+            'multiplayer' => true, 'coop' => true, 'local_multiplayer' => true,
+            'local_coop' => true, 'q' => 'witch', 'library_status' => ['owned'],
+            'rating' => ['5', 'none'],
+        ];
+
+        $response = $this->postJson('/api/collections', [
+            'name' => 'Everything', 'type' => 'filter', 'filters' => $filters,
+        ])->assertCreated();
+
+        $this->assertEquals($filters, $response->json('filters'));
+    }
+
+    public function test_unknown_filter_key_rejected(): void
+    {
+        $this->postJson('/api/collections', [
+            'name' => 'Bad', 'type' => 'filter',
+            'filters' => ['genre' => 'RPG', 'bogus' => 1],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['filters']);
+    }
+
+    /**
+     * T44/V44: a saved filter collection evaluated via `?collection=id` yields
+     * exactly what the same filters applied directly would — saved ≡ re-checking
+     * the facets (LibraryQuery, V29).
+     */
+    public function test_saved_filter_collection_matches_direct_params(): void
+    {
+        $rpg = Game::create(['title' => 'Elden Ring', 'genres' => ['RPG']]);
+        $puzzle = Game::create(['title' => 'Baba Is You', 'genres' => ['Puzzle']]);
+        $connection = PlatformConnection::factory()->create([
+            'user_id' => $this->user->id, 'platform' => 'steam', 'status' => 'ok',
+        ]);
+        foreach ([$rpg, $puzzle] as $game) {
+            OwnedGame::create([
+                'user_id' => $this->user->id,
+                'platform_connection_id' => $connection->id,
+                'game_id' => $game->id,
+                'platform_game_id' => (string) fake()->unique()->numberBetween(1, 999999),
+                'added_at' => now(),
+            ]);
+        }
+
+        $id = $this->postJson('/api/collections', [
+            'name' => 'RPGs', 'type' => 'filter', 'filters' => ['genre' => 'RPG'],
+        ])->json('id');
+
+        $viaCollection = array_column($this->getJson("/api/library?collection={$id}")->json(), 'title');
+        $viaDirect = array_column($this->getJson('/api/library?genre=RPG')->json(), 'title');
+
+        $this->assertSame(['Elden Ring'], $viaCollection);
+        $this->assertSame($viaDirect, $viaCollection);
+    }
+
     private function ownedGame(string $title): Game
     {
         $game = Game::create(['title' => $title]);
