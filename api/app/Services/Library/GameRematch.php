@@ -104,7 +104,7 @@ class GameRematch
         $source->update(['game_id' => $toGameId]);
     }
 
-    private function referencedAnywhere(Game $game): bool
+    public function referencedAnywhere(Game $game): bool
     {
         return $game->ownedGames()->exists()
             || WishlistItem::where('game_id', $game->id)->exists()

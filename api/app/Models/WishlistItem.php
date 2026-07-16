@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'user_id', 'game_id', 'added_at', 'origin', 'steam_present',
-    'gog_present', 'gog_product_id', 'suppressed_at', 'synced_at',
+    'gog_present', 'gog_product_id', 'steam_appid', 'suppressed_at', 'synced_at',
 ])]
 class WishlistItem extends Model
 {

@@ -11,6 +11,7 @@ use App\Services\Gog\GogClient;
 use App\Services\Gog\GogTokenManager;
 use App\Services\Igdb\IgdbClient;
 use App\Services\Library\GameFromIgdb;
+use App\Services\Library\GameRematch;
 use App\Services\Steam\SteamClient;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
@@ -37,6 +38,7 @@ class WishlistSyncService
         private readonly GogTokenManager $gogTokens,
         private readonly IgdbClient $igdb,
         private readonly GameFromIgdb $games,
+        private readonly GameRematch $rematch,
     ) {
     }
 
@@ -77,9 +79,6 @@ class WishlistSyncService
             return;
         }
 
-        $seen = [];
-        $incompletePull = false;
-
         foreach ($appIds as $appId) {
             try {
                 $game = $this->gameFromExternal(
@@ -88,14 +87,14 @@ class WishlistSyncService
                     fn () => $this->steam->appName($appId),
                 );
             } catch (Throwable $e) {
-                // V46: skip the failed item, never abort the batch. V47: the
-                // pull is now incomplete — this appid may still be present, so
-                // absence reconciliation must not run against a partial $seen.
+                // V46: skip the failed item, never abort the batch. V49: absence
+                // is keyed on the raw appid list below (resolution-independent),
+                // so a skipped-but-still-present appid is never reaped — the
+                // V47 incomplete-pull guard is retired.
                 Log::warning('Wishlist steam item resolution failed, skipping', [
                     'app_id' => $appId,
                     'error' => $e->getMessage(),
                 ]);
-                $incompletePull = true;
 
                 continue;
             }
@@ -104,20 +103,19 @@ class WishlistSyncService
                 continue;
             }
 
-            $seen[] = $game->id;
-            $this->recordPresence($user, $game, 'steam');
+            $this->recordPresence($user, $game, 'steam', (string) $appId);
         }
 
-        // V47/B14: reconciling a partial pull would reap still-present items
-        // (absence is keyed on resolved game_id, unlike GOG's raw product id).
-        // Genuine removals propagate on the next fully-resolved sync.
-        if ($incompletePull) {
-            return;
-        }
+        // V49: absence keyed on raw appids (mirrors GOG productIds, V22), not the
+        // resolved game_id — resolution-independent, so a transient/unresolved
+        // appid still on the remote wishlist stays. NULL-backfill rows (pre-T49)
+        // have steam_appid NULL → SQL `NULL NOT IN (...)` = NULL → never in $gone,
+        // kept until a sync populates the column.
+        $appIdStrings = array_map('strval', $appIds);
 
         $gone = WishlistItem::where('user_id', $user->id)
             ->where('steam_present', true)
-            ->whereNotIn('game_id', $seen)
+            ->whereNotIn('steam_appid', $appIdStrings)
             ->get();
 
         $this->handleRemoteAbsence($gone, 'steam');
@@ -177,8 +175,22 @@ class WishlistSyncService
             if ($item->suppressed_at !== null || $item->{$otherFlag}) {
                 $item->update([$flag => false]);
             } else {
+                $game = $item->game;
                 $item->delete();
+                $this->cleanupProvisional($game);
             }
+        }
+    }
+
+    /**
+     * V49/V34 caveat2: dropping a provisional-backed wish (heal or absence)
+     * orphans its provisional `games` row when nothing anywhere still
+     * references it. Reuses GameRematch's union-aware reference check.
+     */
+    private function cleanupProvisional(?Game $game): void
+    {
+        if ($game !== null && $game->igdb_id === null && ! $this->rematch->referencedAnywhere($game)) {
+            $game->delete();
         }
     }
 
@@ -325,12 +337,31 @@ class WishlistSyncService
         return null;
     }
 
-    private function recordPresence(User $user, Game $game, string $platform, ?string $productId = null): void
+    /**
+     * @param  ?string  $externalId  raw store id — steam appid | gog product id
+     */
+    private function recordPresence(User $user, Game $game, string $platform, ?string $externalId = null): void
     {
         // V21: owned games never enter the wishlist.
         if ($user->ownedGames()->where('game_id', $game->id)->exists()) {
             return;
         }
+
+        // V49 heal: a steam appid that previously landed a provisional row
+        // (B11 leftover, no igdb_id) now resolves to a canonical game — repoint
+        // that wish onto the canonical game (merge + orphan-clean via V34)
+        // instead of leaving a duplicate provisional alongside the new row.
+        if ($platform === 'steam' && $externalId !== null && $game->igdb_id !== null) {
+            $byAppid = WishlistItem::where('user_id', $user->id)
+                ->where('steam_appid', $externalId)
+                ->first();
+
+            if ($byAppid !== null && $byAppid->game_id !== $game->id) {
+                $this->rematch->apply($user, $byAppid->game, $game->igdb_id);
+            }
+        }
+
+        $column = $platform === 'steam' ? 'steam_appid' : 'gog_product_id';
 
         $item = WishlistItem::firstOrNew([
             'user_id' => $user->id,
@@ -349,8 +380,8 @@ class WishlistSyncService
             // V22: locally deleted — refresh presence flags only, never
             // resurrect the wish.
             $item->{$platform.'_present'} = true;
-            if ($productId !== null) {
-                $item->gog_product_id = $productId;
+            if ($externalId !== null) {
+                $item->{$column} = $externalId;
             }
             $item->save();
 
@@ -358,8 +389,8 @@ class WishlistSyncService
         }
 
         $item->{$platform.'_present'} = true;
-        if ($productId !== null) {
-            $item->gog_product_id = $productId;
+        if ($externalId !== null) {
+            $item->{$column} = $externalId;
         }
         $item->synced_at = Date::now();
         $item->save();

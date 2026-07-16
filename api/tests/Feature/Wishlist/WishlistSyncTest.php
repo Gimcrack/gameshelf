@@ -442,6 +442,9 @@ class WishlistSyncTest extends TestCase
             'added_at' => now(),
             'origin' => 'steam',
             'steam_present' => true,
+            // V49: post-T49 provisional rows carry their appid → heal repoints
+            // this row onto the canonical game once the mapping resolves.
+            'steam_appid' => '1145360',
         ]);
         Http::fake([
             ...$this->baseFakes(),
@@ -463,13 +466,18 @@ class WishlistSyncTest extends TestCase
         $this->assertDatabaseHas('wishlist_items', [
             'user_id' => $this->user->id,
             'game_id' => $canonical->id,
+            'steam_appid' => '1145360',
         ]);
+        // V49 caveat2: the orphaned provisional row is cleaned up.
+        $this->assertDatabaseMissing('games', ['id' => $provisional->id]);
     }
 
     /**
-     * V47/B14: a transient IGDB/Steam failure on a still-wishlisted appid must
-     * not reap the existing row — the pull is incomplete, so Steam absence
-     * reconciliation is skipped this sync (would wrongly treat it as removed).
+     * V49/B14: a transient IGDB/Steam failure on a still-wishlisted appid must
+     * not reap the existing row. Absence is now keyed on the raw appid (present
+     * in the fetched list regardless of resolution), so reconciliation runs
+     * safely even mid-failure — the row's appid is in the set, so it stays.
+     * Retires the V47 incomplete-pull skip.
      */
     public function test_transient_failure_does_not_drop_still_present_item(): void
     {
@@ -481,24 +489,42 @@ class WishlistSyncTest extends TestCase
             'added_at' => now(),
             'origin' => 'steam',
             'steam_present' => true,
+            'steam_appid' => '1145360',
+        ]);
+        // A second, genuinely-removed wish (its appid no longer on the remote
+        // list) — reconciliation must still reap this one despite the transient
+        // failure on the first item.
+        $removed = Game::create(['igdb_id' => 200000, 'title' => 'Removed Game']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $removed->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+            'steam_appid' => '999999',
         ]);
         Http::fake([
             ...$this->baseFakes(),
             'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
                 'response' => ['items' => [['appid' => 1145360, 'priority' => 0]]],
             ]),
-            // Transient 500 — appid is STILL on the wishlist, just unresolvable
-            // right now.
+            // Transient 500 — appid 1145360 is STILL on the wishlist, just
+            // unresolvable right now.
             'api.igdb.com/v4/external_games' => Http::response('err', 500),
             'store.steampowered.com/api/appdetails*' => Http::response('err', 500),
         ]);
 
         $this->runSync();
 
-        // Still on Steam → must not be deleted on a transient miss.
+        // Still on Steam (appid ∈ fetched list) → kept despite transient miss.
         $this->assertDatabaseHas('wishlist_items', [
             'user_id' => $this->user->id,
             'game_id' => $canonical->id,
+        ]);
+        // Genuinely gone (appid ∉ fetched list) → reconciled away, same sync.
+        $this->assertDatabaseMissing('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $removed->id,
         ]);
     }
 
@@ -517,6 +543,8 @@ class WishlistSyncTest extends TestCase
             'added_at' => now(),
             'origin' => 'steam',
             'steam_present' => true,
+            // V49: its appid is no longer on the remote list below → reaped.
+            'steam_appid' => '1145360',
         ]);
         Http::fake([
             ...$this->baseFakes(),
@@ -538,6 +566,120 @@ class WishlistSyncTest extends TestCase
             'user_id' => $this->user->id,
             'game_id' => $removed->id,
         ]);
+    }
+
+    /**
+     * V49 backfill: a pre-T49 row with a NULL steam_appid is never reaped
+     * (`NULL NOT IN (...)` is NULL, not true) — it's kept until a later sync
+     * populates its appid, even while other appids reconcile normally.
+     */
+    public function test_backfill_null_appid_row_kept(): void
+    {
+        $this->steamConnection();
+        $legacy = Game::create(['igdb_id' => 119388, 'title' => 'Legacy Wish']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $legacy->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+            'steam_appid' => null,
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            // Remote wishlist no longer lists the legacy item's (unknown) appid.
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 555000, 'priority' => 0]]],
+            ]),
+            'api.igdb.com/v4/external_games' => Http::response([]),
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '555000' => ['success' => false],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        // NULL appid → not matched by the absence query → kept.
+        $this->assertDatabaseHas('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $legacy->id,
+        ]);
+    }
+
+    /**
+     * V49 caveat1: an appid still on the remote list is retained even when it
+     * no longer resolves (delisted). Absence is keyed on the raw appid, so
+     * presence-in-list wins over resolution failure.
+     */
+    public function test_delisted_but_present_appid_retained(): void
+    {
+        $this->steamConnection();
+        $delisted = Game::create(['igdb_id' => 119388, 'title' => 'Delisted But Wished']);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $delisted->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+            'steam_appid' => '1145360',
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            // Appid still wishlisted, but now resolves to nothing (delisted).
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 1145360, 'priority' => 0]]],
+            ]),
+            'api.igdb.com/v4/external_games' => Http::response([]),
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '1145360' => ['success' => false],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        $this->assertDatabaseHas('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $delisted->id,
+        ]);
+    }
+
+    /**
+     * V49 caveat2: an absence delete of a provisional-backed wish also cleans
+     * up the orphaned provisional `games` row (0 refs remain, via
+     * GameRematch::referencedAnywhere).
+     */
+    public function test_orphan_provisional_game_cleaned_on_absence_delete(): void
+    {
+        $this->steamConnection();
+        $provisional = Game::create(['title' => 'Provisional Ghost', 'igdb_id' => null]);
+        WishlistItem::create([
+            'user_id' => $this->user->id,
+            'game_id' => $provisional->id,
+            'added_at' => now(),
+            'origin' => 'steam',
+            'steam_present' => true,
+            'steam_appid' => '1145360',
+        ]);
+        Http::fake([
+            ...$this->baseFakes(),
+            // 1145360 gone from remote; only an unrelated appid remains.
+            'api.steampowered.com/IWishlistService/GetWishlist/*' => Http::response([
+                'response' => ['items' => [['appid' => 555000, 'priority' => 0]]],
+            ]),
+            'api.igdb.com/v4/external_games' => Http::response([]),
+            'store.steampowered.com/api/appdetails*' => Http::response([
+                '555000' => ['success' => false],
+            ]),
+        ]);
+
+        $this->runSync();
+
+        $this->assertDatabaseMissing('wishlist_items', [
+            'user_id' => $this->user->id,
+            'game_id' => $provisional->id,
+        ]);
+        // Provisional game had no other refs → cleaned up.
+        $this->assertDatabaseMissing('games', ['id' => $provisional->id]);
     }
 
     public function test_sync_endpoint_dispatches_and_throttles(): void
