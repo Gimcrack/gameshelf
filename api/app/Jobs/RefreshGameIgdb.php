@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Concerns\RateLimitedIgdbSync;
 use App\Models\Game;
 use App\Services\Library\GameIgdbRefresh;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Queue\Middleware\RateLimited;
 
 /**
  * T32/V39: one game's canonical-attr refresh, fanned out from
@@ -17,20 +17,10 @@ use Illuminate\Queue\Middleware\RateLimited;
 class RefreshGameIgdb implements ShouldQueue
 {
     use Queueable;
+    use RateLimitedIgdbSync;
 
     public function __construct(public readonly int $gameId)
     {
-    }
-
-    /**
-     * V39: rate limit enforced at the queue layer — an over-budget job is
-     * released back with a delay instead of sleep-blocking a worker.
-     *
-     * @return array<int, object>
-     */
-    public function middleware(): array
-    {
-        return [new RateLimited('igdb-sync')];
     }
 
     public function handle(GameIgdbRefresh $refresh): void

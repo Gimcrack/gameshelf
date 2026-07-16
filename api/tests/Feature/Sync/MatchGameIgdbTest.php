@@ -158,4 +158,25 @@ class MatchGameIgdbTest extends TestCase
         $this->assertCount(1, $middleware);
         $this->assertInstanceOf(RateLimited::class, $middleware[0]);
     }
+
+    /**
+     * B16/V52: the rate-limited fan-out jobs bound retries by TIME, not
+     * attempt count — a limiter release counts as an attempt, so a count
+     * ceiling would fail flooded wishlist jobs with "too many tries" before
+     * they ever run. retryUntil returns a future deadline; maxExceptions caps
+     * genuine error loops.
+     */
+    public function test_fanout_jobs_bound_retries_by_time_not_attempt_count(): void
+    {
+        $jobs = [
+            new MatchGameIgdb(1, 1),
+            new \App\Jobs\RefreshGameIgdb(1),
+            new \App\Jobs\MatchConnectionIgdb(1),
+        ];
+
+        foreach ($jobs as $job) {
+            $this->assertGreaterThan(now(), $job->retryUntil(), $job::class);
+            $this->assertSame(3, $job->maxExceptions, $job::class);
+        }
+    }
 }
