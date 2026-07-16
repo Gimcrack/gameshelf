@@ -1,10 +1,45 @@
 @import "tailwindcss";
 
 /*
- * SPEC §C.theme: dark only, slate base + teal accent.
- * Tailwind's built-in slate/teal scales are the palette; this layer only
- * sets the global dark shell and form-control defaults utilities can't reach.
+ * SPEC §C.theme + T43 "Nest Hex" design system: dark only, charcoal base with
+ * a slate surface ramp and a muted-teal accent. The five brand hexes are wired
+ * in as Tailwind theme tokens by re-tinting the slate/teal scales (so every
+ * existing `slate-*`/`teal-*` utility resolves to the brand palette) and adding
+ * the deep-indigo + violet accents as named tokens.
+ *
+ * Brand palette (Nest Hex): charcoal #171A21, slate #3A4556,
+ * deep indigo #1A1E4A, teal #2FA7A0, violet #7D6BFF.
  */
+@theme {
+  /* Neutral ramp: charcoal page base → brand slate surface (#3A4556 at 700). */
+  --color-slate-950: #171A21;
+  --color-slate-900: #1C212B;
+  --color-slate-800: #29323F;
+  --color-slate-700: #3A4556;
+  --color-slate-600: #4B5768;
+  --color-slate-500: #6B7789;
+  --color-slate-400: #98A2B0;
+  --color-slate-300: #C2C8D1;
+  --color-slate-200: #DEE1E7;
+  --color-slate-100: #ECEEF2;
+
+  /* Muted teal accent — #2FA7A0 is the primary accent (teal-400). */
+  --color-teal-950: #0E2B29;
+  --color-teal-900: #123632;
+  --color-teal-600: #268079;
+  --color-teal-500: #2A938B;
+  --color-teal-400: #2FA7A0;
+  --color-teal-300: #57C4BD;
+  --color-teal-200: #9BDCD7;
+  --color-teal-100: #C9EEEB;
+
+  /* Deep indigo + violet — brand accents beyond the slate/teal motif. */
+  --color-brand-indigo: #1A1E4A;
+  --color-violet-500: #7D6BFF;
+  --color-violet-400: #9385FF;
+  --color-violet-300: #B3A9FF;
+  --color-violet-950: #191446;
+}
 
 @layer base {
   html {

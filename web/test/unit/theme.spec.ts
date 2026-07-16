@@ -35,6 +35,18 @@ describe('dark slate + teal theme (SPEC §C.theme)', () => {
     expect(appShell).toMatch(/bg-slate-950/)
   })
 
+  it('wires the Nest Hex brand hexes as theme tokens (T43, §C.theme)', async () => {
+    const css = await read('../../app/assets/css/main.css')
+    // The five brand hexes must be present as @theme tokens.
+    for (const hex of ['#171A21', '#3A4556', '#1A1E4A', '#2FA7A0', '#7D6BFF']) {
+      expect(css, `main.css defines ${hex}`).toContain(hex)
+    }
+    expect(css).toMatch(/@theme\s*\{/)
+    // Muted teal is the primary accent (teal-400), not the default bright teal.
+    expect(css).toMatch(/--color-teal-400:\s*#2FA7A0/i)
+    expect(css).toMatch(/--color-slate-950:\s*#171A21/i)
+  })
+
   it('views carry the slate/teal motif, no light-mode variants', async () => {
     const views = [
       '../../app/pages/index.vue',

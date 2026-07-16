@@ -33,8 +33,9 @@ const spines = [
 <template>
   <main class="mx-auto max-w-4xl px-6 pb-20 pt-14">
     <header class="mb-16 flex items-center justify-between">
-      <p class="text-lg font-bold tracking-tight">
-        Game<span class="text-teal-400">Bower</span>
+      <p class="flex items-center gap-2 text-lg font-bold tracking-tight">
+        <BrandMark :size="26" />
+        <BrandWordmark />
       </p>
       <NuxtLink
         to="/login"
@@ -45,6 +46,12 @@ const spines = [
     </header>
 
     <section class="mb-16 text-center">
+      <div
+        class="mx-auto mb-8 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-indigo to-slate-950 ring-1 ring-slate-800 sm:size-24"
+        aria-hidden="true"
+      >
+        <BrandMark :size="56" />
+      </div>
       <h1 class="mx-auto max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
         Every game you own.
         <span class="text-teal-400">One shelf.</span>

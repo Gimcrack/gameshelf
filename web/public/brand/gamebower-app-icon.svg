@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+
+  <title id="title">GameBower app icon</title>
+  <desc id="desc">Rounded square app icon with the GameBower nest hex mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1A1E4A"/>
+      <stop offset="1" stop-color="#171A21"/>
+    </linearGradient>
+  </defs>
+  <rect x="64" y="64" width="896" height="896" rx="220" fill="url(#bg)"/>
+  <g transform="translate(256,256)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M256 48 L430 148 L430 342 L382 370" stroke="#FFFFFF" stroke-width="34"/>
+      <path d="M256 48 L82 148 L82 342 L130 370" stroke="#FFFFFF" stroke-width="34"/>
+      <path d="M256 112 L374 180 L374 314 L338 334" stroke="#AAB4C3" stroke-width="30"/>
+      <path d="M256 112 L138 180 L138 314 L174 334" stroke="#AAB4C3" stroke-width="30"/>
+      <path d="M256 170 L322 208 L322 286 L300 298" stroke="#FFFFFF" stroke-width="26"/>
+      <path d="M256 170 L190 208 L190 286 L212 298" stroke="#FFFFFF" stroke-width="26"/>
+    </g>
+    <path d="M220 332 V252 L256 230 L292 252 V332 Z" fill="#2FA7A0"/>
+  </g>
+</svg>

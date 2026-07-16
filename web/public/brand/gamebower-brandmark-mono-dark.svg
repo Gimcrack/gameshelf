@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+
+  <title id="title">GameBower monochrome dark brandmark</title>
+  <desc id="desc">Single-color concentric open hexagon nest mark.</desc>
+  <g fill="none" stroke="#171A21" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 48 L430 148 L430 342 L382 370" stroke-width="34"/>
+    <path d="M256 48 L82 148 L82 342 L130 370" stroke-width="34"/>
+    <path d="M256 112 L374 180 L374 314 L338 334" stroke-width="30"/>
+    <path d="M256 112 L138 180 L138 314 L174 334" stroke-width="30"/>
+    <path d="M256 170 L322 208 L322 286 L300 298" stroke-width="26"/>
+    <path d="M256 170 L190 208 L190 286 L212 298" stroke-width="26"/>
+  </g>
+  <path d="M220 332 V252 L256 230 L292 252 V332 Z" fill="#171A21"/>
+</svg>

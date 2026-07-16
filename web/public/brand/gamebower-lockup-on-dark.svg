@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="420" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+<rect width="1600" height="420" rx="36" fill="#1A1E4A"/>
+
+  <title id="title">GameBower horizontal logo lockup</title>
+  <desc id="desc">Nest hex brandmark with editable GameBower wordmark.</desc>
+  <g transform="translate(34,22) scale(.73)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M256 48 L430 148 L430 342 L382 370" stroke="#FFFFFF" stroke-width="34"/>
+      <path d="M256 48 L82 148 L82 342 L130 370" stroke="#FFFFFF" stroke-width="34"/>
+      <path d="M256 112 L374 180 L374 314 L338 334" stroke="#AAB4C3" stroke-width="30"/>
+      <path d="M256 112 L138 180 L138 314 L174 334" stroke="#AAB4C3" stroke-width="30"/>
+      <path d="M256 170 L322 208 L322 286 L300 298" stroke="#FFFFFF" stroke-width="26"/>
+      <path d="M256 170 L190 208 L190 286 L212 298" stroke="#FFFFFF" stroke-width="26"/>
+    </g>
+    <path d="M220 332 V252 L256 230 L292 252 V332 Z" fill="#2FA7A0"/>
+  </g>
+  <g font-family="Inter, Avenir Next, Segoe UI, Arial, sans-serif" font-size="220" font-weight="600" letter-spacing="-8">
+    <text x="430" y="286" fill="#FFFFFF">Game</text>
+    <text x="990" y="286" fill="#D7DCE6">Bower</text>
+  </g>
+  <path d="M1322 162 L1354 232 L1385 162" fill="none" stroke="#2FA7A0" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

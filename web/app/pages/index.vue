@@ -96,8 +96,9 @@ async function onLogout(): Promise<void> {
     <header
       class="mb-6 flex items-center justify-between border-b border-slate-800 pb-4"
     >
-      <h1 class="text-2xl font-bold tracking-tight">
-        Game<span class="text-teal-400">Bower</span>
+      <h1 class="flex items-center gap-2.5 text-2xl font-bold tracking-tight">
+        <BrandMark :size="30" />
+        <BrandWordmark />
       </h1>
       <div v-if="user" class="flex items-center gap-3">
         <NuxtLink to="/discover" class="text-sm text-teal-400 hover:text-teal-300">Discover</NuxtLink>

@@ -8,6 +8,12 @@ export default defineNuxtConfig({
   ssr: false,
   srcDir: 'app',
   css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      // T43: Nest Hex brandmark in a deep-indigo disc (SPEC §C.brand favicon).
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
+    }
+  },
   vite: {
     plugins: [tailwindcss()]
   },
