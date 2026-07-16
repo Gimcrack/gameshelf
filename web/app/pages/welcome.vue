@@ -77,7 +77,15 @@ const hexTiles = [
         </NuxtLink>
       </div>
 
-      <div class="mt-14 flex items-center justify-center gap-1" aria-hidden="true">
+      <!--
+        overflow-hidden guards narrow viewports where shrink-0 tiles don't
+        fit (clips left/right, decorative + aria-hidden so that's fine).
+        pb-4 matters: CSS forces overflow-y to compute as auto (which still
+        clips) whenever overflow-x isn't visible — no way to hide one axis
+        and leave the other genuinely visible. The padding keeps the
+        honeycomb-offset (translate-y) tiles fully inside this box instead.
+      -->
+      <div class="mt-14 flex items-center justify-center gap-1 overflow-hidden pb-4" aria-hidden="true">
         <div
           v-for="(tile, i) in hexTiles"
           :key="i"
