@@ -9,6 +9,7 @@ import {
   nextRating,
   ratingStars,
   showsPlaytime,
+  showsRating,
   type LibraryEntry
 } from '../../app/utils/library'
 
@@ -239,6 +240,16 @@ describe('showsPlaytime', () => {
     expect(showsPlaytime(entry({ library_status: 'free' }))).toBe(true)
     expect(showsPlaytime(entry({ library_status: 'wishlist' }))).toBe(false)
     expect(showsPlaytime(entry({ library_status: 'none' }))).toBe(false)
+  })
+})
+
+describe('showsRating', () => {
+  // T59/V57: personal rating doesn't apply to unowned (wishlist/none) entries.
+  it('shows for owned and free, hides for wishlist and none', () => {
+    expect(showsRating(entry({ library_status: 'owned' }))).toBe(true)
+    expect(showsRating(entry({ library_status: 'free' }))).toBe(true)
+    expect(showsRating(entry({ library_status: 'wishlist' }))).toBe(false)
+    expect(showsRating(entry({ library_status: 'none' }))).toBe(false)
   })
 })
 

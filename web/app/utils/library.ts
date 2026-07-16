@@ -220,3 +220,8 @@ export function hasManualEntry(entry: LibraryEntry): boolean {
 export function showsPlaytime(entry: LibraryEntry): boolean {
   return entry.library_status === 'owned' || entry.library_status === 'free'
 }
+
+/** T59/V57: personal rating display doesn't apply to unowned entries — owned|free only. */
+export function showsRating(entry: LibraryEntry): boolean {
+  return entry.library_status === 'owned' || entry.library_status === 'free'
+}
