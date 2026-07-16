@@ -75,3 +75,12 @@ describe('welcome.vue copy (SPEC B20/T61)', () => {
     expect(welcome.toLowerCase()).not.toContain('shelf')
   })
 })
+
+describe('welcome.vue copy (SPEC T64)', () => {
+  it('has no standalone "bower" metaphor word — GameBower brand refs excepted', async () => {
+    const welcome = await read('../../app/pages/welcome.vue')
+    // Word-boundary regex never matches "Bower" inside "GameBower" (no \w/\W
+    // transition mid-word) — only a standalone "bower" would trip this.
+    expect(welcome).not.toMatch(/\bbower\b/i)
+  })
+})
