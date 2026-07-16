@@ -16,6 +16,8 @@ const emit = defineEmits<{
   (e: 'add-to-collection', collectionId: number, gameId: number): void
   (e: 'toggle-hidden', gameId: number, hidden: boolean): void
   (e: 'set-rating', gameId: number, rating: number | null): void
+  (e: 'promote-to-owned', igdbId: number): void
+  (e: 'remove-from-wishlist', gameId: number): void
 }>()
 
 const disconnected = computed(() => hasDisconnectedPlatform(props.entry))
@@ -97,6 +99,20 @@ function onAddToCollection(): void {
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
       <div class="mt-1.5 flex flex-wrap gap-1.5">
+        <button
+          v-if="entry.library_status === 'wishlist' && entry.igdb_id !== null"
+          class="rounded border border-teal-500/60 px-1.5 py-0.5 text-[0.65rem] text-teal-300 transition hover:border-teal-400 hover:text-teal-200"
+          @click="emit('promote-to-owned', entry.igdb_id!)"
+        >
+          I own this
+        </button>
+        <button
+          v-if="entry.library_status === 'wishlist'"
+          class="rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"
+          @click="emit('remove-from-wishlist', entry.id)"
+        >
+          Remove from wishlist
+        </button>
         <button
           v-if="manual"
           class="rounded border border-slate-700 px-1.5 py-0.5 text-[0.65rem] text-slate-400 transition hover:border-rose-400/60 hover:text-rose-300"

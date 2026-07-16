@@ -43,6 +43,16 @@ export function useLibrary() {
     await apiFetch(`/api/library/${gameId}/manual`, { method: 'DELETE' })
   }
 
+  /** T52/V21: promote clears the wishlist row server-side. */
+  async function promoteToOwned(igdbId: number): Promise<void> {
+    await apiFetch('/api/library', { method: 'POST', body: { igdb_id: igdbId } })
+  }
+
+  /** T52/I.api T17: DELETE /api/wishlist/:game_id. */
+  async function removeFromWishlist(gameId: number): Promise<void> {
+    await apiFetch(`/api/wishlist/${gameId}`, { method: 'DELETE' })
+  }
+
   /** T28: distinct genre/theme/keyword/game_mode/platform values, for the left-sidebar checkboxes. */
   async function fetchFacets(): Promise<void> {
     try {
@@ -88,6 +98,8 @@ export function useLibrary() {
     fetchLibrary,
     fetchFacets,
     removeManual,
+    promoteToOwned,
+    removeFromWishlist,
     fetchGame,
     updateMeta,
     rematch,

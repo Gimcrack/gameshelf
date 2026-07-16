@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { buildGogAuthUrl, connectionStatusLabel } from '../utils/connections'
+import { buildGogAuthUrl, connectionStatusLabel, extractGogCode } from '../utils/connections'
 import type { ApiError } from '../utils/api'
 import type { SteamIdentity } from '../composables/useConnections'
 
@@ -15,11 +15,19 @@ const {
   disconnect
 } = useConnections()
 
+const { syncWishlist } = useWishlist()
+
 const steamInput = ref('')
 const gogCode = ref('')
 const formError = ref('')
 const busy = ref(false)
 const resolvedIdentity = ref<SteamIdentity | null>(null)
+
+// T52: relocated from the removed /wishlist page — own state, independent of
+// the connect-forms' busy flag above.
+const wishlistSyncBusy = ref(false)
+const wishlistSyncMessage = ref('')
+const wishlistSyncError = ref('')
 
 const gogAuthUrl = computed(() => buildGogAuthUrl(config.public.gogClientId as string))
 const hasSteam = computed(() =>
@@ -72,15 +80,46 @@ function cancelSteamResolve(): void {
 
 function connectGog(): Promise<void> {
   return run(async () => {
-    await connect({ platform: 'gog', code: gogCode.value.trim() })
+    await connect({ platform: 'gog', code: extractGogCode(gogCode.value) })
     gogCode.value = ''
   })
+}
+
+/** T52/V22: queued platform sync — GOG two-way, Steam import-only. */
+async function onSyncWishlist(): Promise<void> {
+  wishlistSyncBusy.value = true
+  wishlistSyncMessage.value = ''
+  wishlistSyncError.value = ''
+
+  try {
+    await syncWishlist()
+    wishlistSyncMessage.value = 'Sync queued — platform wishlists update in the background.'
+  } catch (err) {
+    wishlistSyncError.value = (err as ApiError).message
+  } finally {
+    wishlistSyncBusy.value = false
+  }
 }
 </script>
 
 <template>
   <section class="rounded-xl border border-slate-800 bg-slate-900 p-6">
     <h2 class="mb-4 font-semibold text-teal-300">Connected services</h2>
+
+    <div class="mb-5 flex flex-wrap items-center gap-3 rounded-md border border-slate-800 bg-slate-950 p-3">
+      <button
+        :disabled="wishlistSyncBusy"
+        class="rounded-md border border-teal-500/60 px-3 py-1.5 text-sm text-teal-300 transition hover:border-teal-400 hover:text-teal-200 disabled:cursor-not-allowed disabled:opacity-50"
+        @click="onSyncWishlist"
+      >
+        {{ wishlistSyncBusy ? 'Queuing…' : 'Sync platform wishlists' }}
+      </button>
+      <p class="text-xs text-slate-500">
+        GOG syncs both ways. Steam wishlists import only.
+      </p>
+    </div>
+    <p v-if="wishlistSyncMessage" class="mb-3 text-sm text-teal-300">{{ wishlistSyncMessage }}</p>
+    <p v-if="wishlistSyncError" class="mb-3 text-sm text-rose-400">{{ wishlistSyncError }}</p>
 
     <p v-if="error" class="mb-3 text-sm text-rose-400">{{ error }}</p>
     <p v-else-if="pending && connections.length === 0" class="mb-3 text-sm text-slate-400">
@@ -198,12 +237,12 @@ function connectGog(): Promise<void> {
             rel="noopener"
             class="text-teal-400 hover:text-teal-300"
             >Log in to GOG</a
-          >, then paste the <code class="text-slate-300">code</code> from the final URL.
+          >, then paste the final page's URL (or just the <code class="text-slate-300">code</code> value) here.
         </p>
         <input
           v-model="gogCode"
           type="text"
-          placeholder="GOG login code"
+          placeholder="Paste the final GOG URL or code"
           class="mb-2 block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-teal-400 focus:outline-none"
         />
         <button

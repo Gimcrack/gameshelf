@@ -55,7 +55,6 @@ describe('dark slate + teal theme (SPEC §C.theme)', () => {
       '../../app/pages/welcome.vue',
       '../../app/pages/stats.vue',
       '../../app/pages/profile.vue',
-      '../../app/pages/wishlist.vue',
       '../../app/components/GameCard.vue',
       '../../app/components/ProfileAccount.vue',
       '../../app/components/ProfileConnections.vue',

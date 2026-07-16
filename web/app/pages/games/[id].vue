@@ -11,7 +11,7 @@ import {
 const route = useRoute()
 const gameId = computed(() => Number(route.params.id))
 
-const { fetchGame, updateMeta, refreshIgdb } = useLibrary()
+const { fetchGame, updateMeta, refreshIgdb, promoteToOwned, removeFromWishlist } = useLibrary()
 
 const entry: Ref<LibraryEntry | null> = ref(null)
 const pending = ref(false)
@@ -20,6 +20,8 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 const fetching = ref(false)
 const fetchError = ref<string | null>(null)
+const wishlistBusy = ref(false)
+const wishlistError = ref<string | null>(null)
 
 const status = ref<GameStatus>('unplayed')
 const tagsInput = ref('')
@@ -73,6 +75,36 @@ async function onFetch(): Promise<void> {
     fetchError.value = (err as { message?: string }).message ?? 'Failed to refresh from IGDB.'
   } finally {
     fetching.value = false
+  }
+}
+
+// T52: promote/remove relocated from the removed /wishlist page.
+async function onPromoteToOwned(): Promise<void> {
+  if (!entry.value || entry.value.igdb_id === null) return
+
+  wishlistBusy.value = true
+  wishlistError.value = null
+
+  try {
+    await promoteToOwned(entry.value.igdb_id)
+    await load()
+  } catch (err) {
+    wishlistError.value = (err as { message?: string }).message ?? 'Failed to add to library.'
+  } finally {
+    wishlistBusy.value = false
+  }
+}
+
+async function onRemoveFromWishlist(): Promise<void> {
+  wishlistBusy.value = true
+  wishlistError.value = null
+
+  try {
+    await removeFromWishlist(gameId.value)
+    await navigateTo('/')
+  } catch (err) {
+    wishlistError.value = (err as { message?: string }).message ?? 'Failed to remove from wishlist.'
+    wishlistBusy.value = false
   }
 }
 
@@ -167,8 +199,25 @@ async function onSave(): Promise<void> {
           >
             {{ fetching ? 'Fetching…' : 'Fetch latest from IGDB' }}
           </button>
+          <button
+            v-if="entry.library_status === 'wishlist' && entry.igdb_id !== null"
+            :disabled="wishlistBusy"
+            class="rounded-md border border-teal-500/60 px-3 py-1.5 text-sm text-teal-300 transition hover:border-teal-400 hover:text-teal-200 disabled:cursor-not-allowed disabled:opacity-50"
+            @click="onPromoteToOwned"
+          >
+            I own this
+          </button>
+          <button
+            v-if="entry.library_status === 'wishlist'"
+            :disabled="wishlistBusy"
+            class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-rose-400/60 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+            @click="onRemoveFromWishlist"
+          >
+            Remove from wishlist
+          </button>
         </div>
         <p v-if="fetchError" class="mb-4 text-sm text-rose-400">{{ fetchError }}</p>
+        <p v-if="wishlistError" class="mb-4 text-sm text-rose-400">{{ wishlistError }}</p>
 
         <div v-if="entry.esrb_rating || entry.multiplayer || entry.coop" class="mb-4 flex flex-wrap gap-1.5">
           <span

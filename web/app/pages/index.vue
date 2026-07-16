@@ -4,7 +4,18 @@ import { libraryFiltersToPreset } from '../utils/library'
 import { splitGameModeSelection } from '../utils/facets'
 
 const { user, logout, fetchUser } = useAuth()
-const { entries, facets, pending, error, fetchLibrary, fetchFacets, removeManual, updateMeta } = useLibrary()
+const {
+  entries,
+  facets,
+  pending,
+  error,
+  fetchLibrary,
+  fetchFacets,
+  removeManual,
+  updateMeta,
+  promoteToOwned,
+  removeFromWishlist
+} = useLibrary()
 const { collections, system, fetchCollections, addGame, createFilterCollection } = useCollections()
 
 const manualCollections = computed(() => collections.value.filter((c) => c.type === 'manual'))
@@ -101,6 +112,19 @@ async function onSetRating(gameId: number, rating: number | null): Promise<void>
   await fetchLibrary(filters.value)
 }
 
+// T52: wishlist promote/remove relocated from the removed /wishlist page.
+async function onPromoteToOwned(igdbId: number): Promise<void> {
+  await promoteToOwned(igdbId)
+  await fetchLibrary(filters.value)
+  await fetchFacets()
+}
+
+async function onRemoveFromWishlist(gameId: number): Promise<void> {
+  await removeFromWishlist(gameId)
+  await fetchLibrary(filters.value)
+  await fetchFacets()
+}
+
 async function onLogout(): Promise<void> {
   isLoggingOut.value = true
   try {
@@ -123,7 +147,6 @@ async function onLogout(): Promise<void> {
       </h1>
       <div v-if="user" class="flex items-center gap-3">
         <NuxtLink to="/discover" class="text-sm text-teal-400 hover:text-teal-300">Discover</NuxtLink>
-        <NuxtLink to="/wishlist" class="text-sm text-teal-400 hover:text-teal-300">Wishlist</NuxtLink>
         <NuxtLink to="/stats" class="text-sm text-teal-400 hover:text-teal-300">Stats</NuxtLink>
         <NuxtLink to="/profile" class="text-sm text-teal-400 hover:text-teal-300">Profile</NuxtLink>
         <span class="text-sm text-slate-400">{{ user.email }}</span>
@@ -227,6 +250,8 @@ async function onLogout(): Promise<void> {
               @add-to-collection="onAddToCollection"
               @toggle-hidden="onToggleHidden"
               @set-rating="onSetRating"
+              @promote-to-owned="onPromoteToOwned"
+              @remove-from-wishlist="onRemoveFromWishlist"
             />
           </div>
         </section>
