@@ -1,18 +1,27 @@
 <script setup lang="ts">
-const steps = [
+// T73: adopted from landing-mockup.png's 3 feature cards — replaces the
+// old "steps" copy, same card treatment.
+const features = [
   {
-    title: 'Connect',
-    body: 'Link your Steam, GOG, and Xbox accounts. GameBower pulls every game you own, automatically.'
+    title: 'Aggregate',
+    body: 'Connect all your accounts and bring your games together.',
+    color: 'bg-teal-500/70'
   },
   {
-    title: 'One collection',
-    body: 'The same game on two stores becomes one entry. Playtime, genres, and covers included.'
+    title: 'Organize',
+    body: 'Powerful filters, collections, rating, and playtime tracking.',
+    color: 'bg-violet-400/70'
   },
   {
-    title: 'Clear the backlog',
-    body: 'Tag, filter, and sort what you actually want to play. See how deep the pile really is.'
+    title: 'Discover',
+    body: 'Find hidden gems and decide what to play next.',
+    color: 'bg-teal-400/70'
   }
 ] as const
+
+// T73/V71: only platforms this app actually integrates — mockup's
+// PlayStation/Epic Games/Nintendo Switch logos dropped, not supported.
+const platforms = ['Steam', 'GOG', 'Xbox', '+ Manual add'] as const
 
 // T62/§C.brand: Nest Hex honeycomb strip — replaces the old book-spine bar
 // (leftover pre-rebrand visual). Fixed hex aspect ratio (unlike the old
@@ -42,49 +51,73 @@ const hexTiles = [
         <BrandMark :size="26" />
         <BrandWordmark />
       </p>
-      <NuxtLink
-        to="/login"
-        class="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300"
-      >
-        Log in
-      </NuxtLink>
+      <!-- T73: anchor-nav scoped to sections that exist on this page —
+           ⊥ Pricing/Blog/Discover from the mockup (no target for any). -->
+      <nav class="hidden items-center gap-6 text-sm text-slate-400 sm:flex">
+        <a href="#features" class="hover:text-teal-300">Features</a>
+        <a href="#platforms" class="hover:text-teal-300">Platforms</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <NuxtLink to="/login" class="text-sm text-slate-400 hover:text-teal-300">
+          Log in
+        </NuxtLink>
+        <NuxtLink
+          to="/register"
+          class="rounded-md bg-teal-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
+        >
+          Get started
+        </NuxtLink>
+      </div>
     </header>
 
     <section class="mb-16 text-center">
-      <div
-        class="mx-auto mb-8 flex size-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-indigo to-slate-950 ring-1 ring-slate-800 sm:size-24"
-        aria-hidden="true"
+      <p
+        class="mx-auto mb-6 inline-block rounded-full border border-teal-500/40 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-teal-300"
       >
-        <BrandMark :size="56" />
-      </div>
+        Your games. Organized.
+      </p>
       <h1 class="mx-auto max-w-2xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-        All your games
+        Every game you own,
         <br>
-        <span class="text-teal-400">In one place</span>
+        organized in <span class="text-teal-400">one</span> library.
       </h1>
       <p class="mx-auto mt-5 max-w-xl text-lg text-slate-400">
-        Your library is scattered across Steam, GOG, and Xbox. GameBower gathers it in one
-        place, deduplicates it, and shows you what's still waiting to be played.
+        Bring together games from every platform and storefront. Search, filter, organize, and
+        discover what to play next.
       </p>
       <div class="mt-8 flex items-center justify-center gap-4">
         <NuxtLink
           to="/register"
           class="rounded-md bg-teal-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
         >
-          Build your collection
+          Build your library
         </NuxtLink>
-        <NuxtLink to="/login" class="text-sm text-slate-400 hover:text-teal-300">
-          I have an account
-        </NuxtLink>
+        <a
+          href="#screenshot"
+          class="inline-flex items-center gap-2 rounded-md border border-slate-700 px-6 py-3 font-semibold text-slate-300 transition hover:border-teal-400/60 hover:text-teal-300"
+        >
+          <span aria-hidden="true">▶</span>
+          See how it works
+        </a>
       </div>
 
-      <!-- T72/V70: real product screenshot, demo-seeded data only. -->
-      <img
-        src="/screenshots/library-hero.webp"
-        alt="GameBower library view showing a deduplicated game collection with covers, ratings, and playtime"
-        loading="lazy"
-        class="mx-auto mt-14 w-full max-w-3xl rounded-lg border border-slate-800 shadow-2xl shadow-black/40"
-      />
+      <!-- T72/V70: real product screenshot, demo-seeded data only.
+           T73/V70: generic browser-chrome dots — same neutral color, ⊥
+           macOS red/amber/green — reads as "a screenshot" without
+           impersonating one specific OS/browser. -->
+      <div id="screenshot" class="mx-auto mt-14 max-w-3xl overflow-hidden rounded-lg border border-slate-800 shadow-2xl shadow-black/40">
+        <div class="flex items-center gap-1.5 border-b border-slate-800 bg-slate-900 px-4 py-3" aria-hidden="true">
+          <span class="size-2.5 rounded-full bg-slate-700" />
+          <span class="size-2.5 rounded-full bg-slate-700" />
+          <span class="size-2.5 rounded-full bg-slate-700" />
+        </div>
+        <img
+          src="/screenshots/library-hero.webp"
+          alt="GameBower library view showing a deduplicated game collection with covers, ratings, and playtime"
+          loading="lazy"
+          class="w-full"
+        />
+      </div>
 
       <!--
         overflow-hidden guards narrow viewports where shrink-0 tiles don't
@@ -104,14 +137,33 @@ const hexTiles = [
       </div>
     </section>
 
-    <section class="grid gap-8 sm:grid-cols-3">
+    <!-- T73/V71: only actually-integrated platforms — Steam, GOG, Xbox,
+         manual-add. Mockup's PlayStation/Epic Games/Nintendo Switch logos
+         dropped (⊥ supported; PlayStation explicitly rejected V60). -->
+    <section id="platforms" class="mb-16 text-center">
+      <p class="mb-6 text-sm font-semibold uppercase tracking-widest text-slate-500">
+        One library across every platform
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <span
+          v-for="platform in platforms"
+          :key="platform"
+          class="rounded-md border border-slate-800 bg-slate-900 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-slate-400"
+        >
+          {{ platform }}
+        </span>
+      </div>
+    </section>
+
+    <section id="features" class="grid gap-8 sm:grid-cols-3">
       <div
-        v-for="step in steps"
-        :key="step.title"
+        v-for="feature in features"
+        :key="feature.title"
         class="rounded-lg border border-slate-800 bg-slate-900 p-6"
       >
-        <h2 class="mb-2 font-semibold text-teal-300">{{ step.title }}</h2>
-        <p class="text-sm leading-relaxed text-slate-400">{{ step.body }}</p>
+        <div class="hex-tile mb-4 size-10" :class="feature.color" aria-hidden="true" />
+        <h2 class="mb-2 font-semibold text-teal-300">{{ feature.title }}</h2>
+        <p class="text-sm leading-relaxed text-slate-400">{{ feature.body }}</p>
       </div>
     </section>
 
