@@ -26,6 +26,8 @@ useSeoMeta({
   twitterImage: ogImage
 })
 useHead({
+  // useSeoMeta has no ogLogo shortcut (not core Open Graph) — raw meta tag.
+  meta: [{ property: 'og:logo', content: new URL('/brand/gamebower-app-icon.png', siteUrl).href }],
   link: [{ rel: 'canonical', href: new URL('/welcome', siteUrl).href }]
 })
 
