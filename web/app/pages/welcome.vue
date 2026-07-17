@@ -1,12 +1,13 @@
 <script setup lang="ts">
-// SEO: client-injected only (ssr:false, SPEC §C.nuxt-mode) — covers real
-// browsers + JS-executing crawlers, not static link-preview scrapers
-// (Slack/Discord/Twitter card bots need prerendered HTML, out of scope).
+// SEO: /welcome prerenders to static HTML (nuxt.config routeRules) so
+// these tags are real crawler-visible OG/Twitter cards, not just a client
+// title. siteUrl must be a fixed origin, not useRequestURL() — there's no
+// live request at prerender/build time (it would resolve to localhost).
+const siteUrl = useRuntimeConfig().public.siteUrl
 const title = 'GameBower — All your games, one library'
 const description =
   'Aggregate every game you own across Steam, GOG, Xbox, and manual entries into one organized library. Search, filter, rate, and discover what to play next.'
-const requestUrl = useRequestURL()
-const ogImage = new URL('/screenshots/library-hero.webp', requestUrl.origin).href
+const ogImage = new URL('/screenshots/library-hero.webp', siteUrl).href
 
 useSeoMeta({
   title,
@@ -14,7 +15,7 @@ useSeoMeta({
   ogTitle: title,
   ogDescription: description,
   ogType: 'website',
-  ogUrl: requestUrl.href,
+  ogUrl: new URL('/welcome', siteUrl).href,
   ogImage,
   ogImageWidth: 1600,
   ogImageHeight: 872,
@@ -25,7 +26,7 @@ useSeoMeta({
   twitterImage: ogImage
 })
 useHead({
-  link: [{ rel: 'canonical', href: `${requestUrl.origin}/welcome` }]
+  link: [{ rel: 'canonical', href: new URL('/welcome', siteUrl).href }]
 })
 
 // T73: adopted from landing-mockup.png's 3 feature cards — replaces the
