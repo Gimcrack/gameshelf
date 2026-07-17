@@ -1,4 +1,33 @@
 <script setup lang="ts">
+// SEO: client-injected only (ssr:false, SPEC §C.nuxt-mode) — covers real
+// browsers + JS-executing crawlers, not static link-preview scrapers
+// (Slack/Discord/Twitter card bots need prerendered HTML, out of scope).
+const title = 'GameBower — All your games, one library'
+const description =
+  'Aggregate every game you own across Steam, GOG, Xbox, and manual entries into one organized library. Search, filter, rate, and discover what to play next.'
+const requestUrl = useRequestURL()
+const ogImage = new URL('/screenshots/library-hero.webp', requestUrl.origin).href
+
+useSeoMeta({
+  title,
+  description,
+  ogTitle: title,
+  ogDescription: description,
+  ogType: 'website',
+  ogUrl: requestUrl.href,
+  ogImage,
+  ogImageWidth: 1600,
+  ogImageHeight: 872,
+  ogImageAlt: 'GameBower library view showing a deduplicated game collection with covers, ratings, and playtime',
+  twitterCard: 'summary_large_image',
+  twitterTitle: title,
+  twitterDescription: description,
+  twitterImage: ogImage
+})
+useHead({
+  link: [{ rel: 'canonical', href: `${requestUrl.origin}/welcome` }]
+})
+
 // T73: adopted from landing-mockup.png's 3 feature cards — replaces the
 // old "steps" copy, same card treatment.
 const features = [

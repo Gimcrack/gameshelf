@@ -10,6 +10,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
+      htmlAttrs: { lang: 'en' },
       // T43: Nest Hex brandmark in a deep-indigo disc (SPEC §C.brand favicon).
       link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
     }
