@@ -78,6 +78,14 @@ const hexTiles = [
         </NuxtLink>
       </div>
 
+      <!-- T72/V70: real product screenshot, demo-seeded data only. -->
+      <img
+        src="/screenshots/library-hero.webp"
+        alt="GameBower library view showing a deduplicated game collection with covers, ratings, and playtime"
+        loading="lazy"
+        class="mx-auto mt-14 w-full max-w-3xl rounded-lg border border-slate-800 shadow-2xl shadow-black/40"
+      />
+
       <!--
         overflow-hidden guards narrow viewports where shrink-0 tiles don't
         fit (clips left/right, decorative + aria-hidden so that's fine).
