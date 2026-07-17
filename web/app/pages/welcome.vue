@@ -5,17 +5,20 @@ const features = [
   {
     title: 'Aggregate',
     body: 'Connect all your accounts and bring your games together.',
-    color: 'bg-teal-500/70'
+    color: 'bg-teal-500/70',
+    glow: 'shadow-[0_0_24px_rgba(45,197,158,0.35)] ring-teal-500/30'
   },
   {
     title: 'Organize',
     body: 'Powerful filters, collections, rating, and playtime tracking.',
-    color: 'bg-violet-400/70'
+    color: 'bg-violet-400/70',
+    glow: 'shadow-[0_0_24px_rgba(167,139,250,0.35)] ring-violet-400/30'
   },
   {
     title: 'Discover',
     body: 'Find hidden gems and decide what to play next.',
-    color: 'bg-teal-400/70'
+    color: 'bg-teal-400/70',
+    glow: 'shadow-[0_0_24px_rgba(45,197,158,0.35)] ring-teal-500/30'
   }
 ] as const
 
@@ -88,7 +91,7 @@ const hexTiles = [
       <div class="mt-8 flex items-center justify-center gap-4">
         <NuxtLink
           to="/register"
-          class="rounded-md bg-teal-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
+          class="rounded-md bg-teal-500 px-6 py-3 font-semibold text-slate-950 shadow-[0_0_30px_rgba(45,197,158,0.35)] transition hover:bg-teal-400 hover:shadow-[0_0_40px_rgba(45,197,158,0.5)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400"
         >
           Build your library
         </NuxtLink>
@@ -105,7 +108,10 @@ const hexTiles = [
            T73/V70: generic browser-chrome dots — same neutral color, ⊥
            macOS red/amber/green — reads as "a screenshot" without
            impersonating one specific OS/browser. -->
-      <div id="screenshot" class="mx-auto mt-14 max-w-3xl overflow-hidden rounded-lg border border-slate-800 shadow-2xl shadow-black/40">
+      <div
+        id="screenshot"
+        class="mx-auto mt-14 max-w-3xl overflow-hidden rounded-lg border border-slate-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_120px_20px_rgba(45,197,158,0.12),0_0_180px_60px_rgba(124,58,237,0.08)]"
+      >
         <div class="flex items-center gap-1.5 border-b border-slate-800 bg-slate-900 px-4 py-3" aria-hidden="true">
           <span class="size-2.5 rounded-full bg-slate-700" />
           <span class="size-2.5 rounded-full bg-slate-700" />
@@ -161,7 +167,13 @@ const hexTiles = [
         :key="feature.title"
         class="rounded-lg border border-slate-800 bg-slate-900 p-6"
       >
-        <div class="hex-tile mb-4 size-10" :class="feature.color" aria-hidden="true" />
+        <div
+          class="mb-4 flex size-14 items-center justify-center rounded-xl ring-1"
+          :class="feature.glow"
+          aria-hidden="true"
+        >
+          <div class="hex-tile size-7" :class="feature.color" />
+        </div>
         <h2 class="mb-2 font-semibold text-teal-300">{{ feature.title }}</h2>
         <p class="text-sm leading-relaxed text-slate-400">{{ feature.body }}</p>
       </div>
