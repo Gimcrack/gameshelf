@@ -110,6 +110,49 @@ export interface LibraryFilters {
   collection?: string
 }
 
+/**
+ * T81/V77: UI-facing filter/sort/collection selection state, persisted via
+ * `useLibrary`'s `useState('library-filter-state', ...)` so it survives
+ * in-app navigation away from and back to the library page.
+ */
+export interface LibraryFilterState {
+  q: string
+  sort: LibrarySort
+  order: 'asc' | 'desc'
+  platforms: string[]
+  genres: string[]
+  themes: string[]
+  keywords: string[]
+  gameModes: string[]
+  deckStatuses: DeckStatus[]
+  esrb: string[]
+  libraryStatuses: LibraryStatus[]
+  ratings: string[]
+  unplayed: boolean
+  showHidden: boolean
+  selectedCollection: string
+}
+
+export function defaultLibraryFilterState(): LibraryFilterState {
+  return {
+    q: '',
+    sort: 'alpha',
+    order: 'asc',
+    platforms: [],
+    genres: [],
+    themes: [],
+    keywords: [],
+    gameModes: [],
+    deckStatuses: [],
+    esrb: [],
+    libraryStatuses: [],
+    ratings: [],
+    unplayed: false,
+    showHidden: false,
+    selectedCollection: ''
+  }
+}
+
 export interface LibraryFacets {
   genres: string[]
   themes: string[]

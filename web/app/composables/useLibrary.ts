@@ -3,10 +3,12 @@ import { useState } from '#app'
 import { apiFetch, type ApiError } from '../utils/api'
 import {
   buildLibraryQuery,
+  defaultLibraryFilterState,
   type Achievement,
   type LibraryEntry,
   type LibraryFacets,
   type LibraryFilters,
+  type LibraryFilterState,
   type LibraryMetaUpdate
 } from '../utils/library'
 
@@ -22,6 +24,13 @@ const EMPTY_FACETS: LibraryFacets = {
 export function useLibrary() {
   const entries: Ref<LibraryEntry[]> = useState<LibraryEntry[]>('library-entries', () => [])
   const facets: Ref<LibraryFacets> = useState<LibraryFacets>('library-facets', () => EMPTY_FACETS)
+  // T81/V77: filter/sort/collection selection state, persisted across in-app nav.
+  const filterState: Ref<LibraryFilterState> = useState<LibraryFilterState>(
+    'library-filter-state',
+    defaultLibraryFilterState
+  )
+  // T81/V78: scrollY captured on leaving `/`, restored after fetchLibrary resolves.
+  const scrollY: Ref<number | null> = useState<number | null>('library-scroll-y', () => null)
   const pending = ref(false)
   const error = ref<string | null>(null)
 
@@ -110,6 +119,8 @@ export function useLibrary() {
   return {
     entries,
     facets,
+    filterState,
+    scrollY,
     pending,
     error,
     fetchLibrary,

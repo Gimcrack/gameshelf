@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DeckStatus, LibraryFilters, LibrarySort, LibraryStatus } from '../utils/library'
+import type { LibraryFilters } from '../utils/library'
 import { libraryFiltersToPreset } from '../utils/library'
 import { splitGameModeSelection } from '../utils/facets'
 
@@ -7,6 +7,8 @@ const { user, logout, fetchUser } = useAuth()
 const {
   entries,
   facets,
+  filterState,
+  scrollY,
   pending,
   error,
   fetchLibrary,
@@ -21,7 +23,6 @@ const { collections, system, fetchCollections, addGame, createFilterCollection }
 const manualCollections = computed(() => collections.value.filter((c) => c.type === 'manual'))
 // T44: filter collections are the ones the library picker can re-apply.
 const filterCollections = computed(() => collections.value.filter((c) => c.type === 'filter'))
-const selectedCollection = ref('')
 
 const isLoggingOut = ref(false)
 // V62: filter sidebar collapses into this drawer below `md`.
@@ -38,20 +39,26 @@ function onDrawerKeydown(event: KeyboardEvent): void {
 onMounted(() => window.addEventListener('keydown', onDrawerKeydown))
 onUnmounted(() => window.removeEventListener('keydown', onDrawerKeydown))
 
-const q = ref('')
-const sort = ref<LibrarySort>('alpha')
-const order = ref<'asc' | 'desc'>('asc')
-const platforms = ref<string[]>([])
-const genres = ref<string[]>([])
-const themes = ref<string[]>([])
-const keywords = ref<string[]>([])
-const gameModes = ref<string[]>([])
-const unplayed = ref(false)
-const showHidden = ref(false)
-const deckStatuses = ref<DeckStatus[]>([])
-const esrb = ref<string[]>([])
-const libraryStatuses = ref<LibraryStatus[]>([])
-const ratings = ref<string[]>([])
+// T81/V77: filter/sort/collection state lives in useLibrary's useState so it
+// survives in-app navigation away from and back to this page.
+const {
+  q,
+  sort,
+  order,
+  platforms,
+  genres,
+  themes,
+  keywords,
+  gameModes,
+  deckStatuses,
+  esrb,
+  libraryStatuses,
+  ratings,
+  unplayed,
+  showHidden,
+  selectedCollection
+} = toRefs(filterState.value)
+// T80: not in V77's persisted set (pre-existing gap) — stays page-local.
 const vr = ref(false)
 
 const filters = computed<LibraryFilters>(() => {
@@ -81,11 +88,21 @@ const filters = computed<LibraryFilters>(() => {
   }
 })
 
+// T81/V78: capture on leave, restore only after fetchLibrary resolves below —
+// restoring pre-fetch (page starts empty on remount) lands in empty space.
+onBeforeRouteLeave(() => {
+  scrollY.value = window.scrollY
+})
+
 onMounted(async () => {
   if (!user.value) {
     await fetchUser()
   }
   await fetchLibrary(filters.value)
+  if (scrollY.value !== null) {
+    await nextTick()
+    window.scrollTo(0, scrollY.value)
+  }
   await fetchCollections()
   await fetchFacets()
 })

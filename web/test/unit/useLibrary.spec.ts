@@ -134,4 +134,47 @@ describe('useLibrary', () => {
 
     await expect(fetchAchievements(5)).rejects.toThrow('Request failed. Please try again.')
   })
+
+  // T81/V77: filter/sort/collection state persists via useState — same
+  // singleton-key pattern entries/facets already rely on, made explicit.
+  it('starts filterState at the default (unset) selection', () => {
+    const { filterState } = useLibrary()
+
+    expect(filterState.value).toEqual({
+      q: '',
+      sort: 'alpha',
+      order: 'asc',
+      platforms: [],
+      genres: [],
+      themes: [],
+      keywords: [],
+      gameModes: [],
+      deckStatuses: [],
+      esrb: [],
+      libraryStatuses: [],
+      ratings: [],
+      unplayed: false,
+      showHidden: false,
+      selectedCollection: ''
+    })
+  })
+
+  it('shares the same filterState ref across composable calls', () => {
+    const first = useLibrary()
+    first.filterState.value.q = 'portal'
+    const second = useLibrary()
+
+    expect(second.filterState.value.q).toBe('portal')
+  })
+
+  // T81/V78: scrollY starts unset (no-op restore) and is shared like filterState.
+  it('shares the same scrollY ref across composable calls', () => {
+    const first = useLibrary()
+    expect(first.scrollY.value).toBeNull()
+
+    first.scrollY.value = 480
+    const second = useLibrary()
+
+    expect(second.scrollY.value).toBe(480)
+  })
 })
