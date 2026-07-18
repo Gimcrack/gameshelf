@@ -24,7 +24,8 @@ export default defineNuxtConfig({
     '/discover': { ssr: false },
     '/games/**': { ssr: false },
     '/profile': { ssr: false },
-    '/stats': { ssr: false }
+    '/stats': { ssr: false },
+    '/connections/**': { ssr: false }
   },
   css: ['~/assets/css/main.css'],
   app: {
