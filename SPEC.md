@@ -49,7 +49,7 @@ Source: `design-doc.md` v0.1 (pre-rename, historical — ⊥ rewritten).
 
 ## §I interfaces
 
-- api: `POST /api/connections` {platform: steam|gog} → OAuth/connect flow
+- api: `POST /api/connections` {platform: steam|gog|xbox} → OAuth/connect flow. `xbox` added amend 2026-07-19 (B29 audit — was steam|gog only, T63 never folded back into this row): {platform: xbox, code, redirect_uri} — `redirect_uri` required xbox-only (I.xbox: app controls the Azure AD registration, FE's own redirect_uri echoed back verbatim at token exchange, T63).
 - api: `POST /api/connections/:id/sync` → 202, dispatch sync job
 - api: `GET /api/connections` → [{platform, last_synced_at, status}]
 - api: `DELETE /api/connections/:id` → 200 soft disconnect: status → disconnected, owned_games kept (V13). Added T5.
@@ -99,7 +99,7 @@ Source: `design-doc.md` v0.1 (pre-rename, historical — ⊥ rewritten).
 - ext: Steam Web API `GetPlayerAchievements` {steamid, appid} → [{apiname, achieved, unlocktime}]; gated by profile/stats privacy (V15-style — private → distinct error state, ⊥ silent empty). Called w/ CALLER's own steamid ∀ their steam owned_games rows incl. `shared` (V65). Added T68.
 - ext: Xbox Live `achievements.xboxlive.com/users/xuid({xuid})/achievements` (header `x-xbl-contract-version:2`) → combined defs+unlock-state per achievement (name, description, lockedDescription, progressState, gamerscore reward, timeUnlocked) — reuses existing T63 XSTS bearer, ⊥ separate schema call (unlike Steam). Added T69.
 - api: `GET /api/library/:game_id/achievements` → per-owning-platform-row achievement list [{platform, name, description, icon_url?, points?, unlocked, unlocked_at?}]; 404 if game ∉ caller library | caller's owning row(s) ∈ {gog, manual} only (V64/⊥achv-capable) | entry is wishlist/none (V67-class, mirrors V53/V57 unowned gating). Added T70.
-- env: `STEAM_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET`, `APP_KEY` (token encryption) ! set. FE (web/): `NUXT_PUBLIC_GOG_CLIENT_ID` — same value as `GOG_CLIENT_ID` (public, not secret) — ! set for GOG login to build a valid authorize URL, amend 2026-07-15 → B17/T56. `XBOX_CLIENT_ID`, `XBOX_CLIENT_SECRET` (Azure AD app reg) ! set — added amend 2026-07-16 → T63.
+- env: `STEAM_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET`, `APP_KEY` (token encryption) ! set. FE (web/): `NUXT_PUBLIC_GOG_CLIENT_ID` — same value as `GOG_CLIENT_ID` (public, not secret) — ! set for GOG login to build a valid authorize URL, amend 2026-07-15 → B17/T56. `XBOX_CLIENT_ID`, `XBOX_CLIENT_SECRET` (Azure AD app reg) ! set — added amend 2026-07-16 → T63. `HORIZON_BASIC_AUTH_USER`, `HORIZON_BASIC_AUTH_PASSWORD` ! set — gates `/horizon` (V61, `HorizonBasicAuth` middleware), unset → 403 deny-all. Added amend 2026-07-19 (B29 audit — mechanism shipped T65, never documented here).
 - db: `users` — id, email, created_at
 - db: `platform_connections` — id, user_id, platform enum(steam|gog|manual T14|steam_family T60|xbox T63), external_account_id, auth_token (encrypted), refresh_token (encrypted, nullable), token_expires_at, last_synced_at, status
 - db: `family_members` — id, user_id, steam_id, persona_name, avatar_url, platform_connection_id (FK → synthetic steam_family connection, V58), created_at. unique(user_id, steam_id). Added T60.
