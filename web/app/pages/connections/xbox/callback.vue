@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiError } from '../../../utils/api'
+import { XBOX_CALLBACK_PATH } from '../../../utils/connections'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,8 +22,12 @@ onMounted(async () => {
   }
 
   try {
-    // Must exactly match the redirect_uri the authorize URL was built with.
-    const redirectUri = `${window.location.origin}${route.path}`
+    // AADSTS70000 (B26): must byte-for-byte match what buildXboxAuthUrl used
+    // to build the authorize URL — derive from the same shared constant, NOT
+    // live route.path. A static host can 301 this route to add a trailing
+    // slash (it's a real prerendered directory since T76), which would
+    // silently mutate route.path and break the match MS enforces at /token.
+    const redirectUri = `${window.location.origin}${XBOX_CALLBACK_PATH}`
     await connect({ platform: 'xbox', code, redirect_uri: redirectUri })
     await router.replace('/profile?xbox_connected=1')
   } catch (err) {
