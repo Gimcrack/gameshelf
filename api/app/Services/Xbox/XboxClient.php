@@ -132,6 +132,13 @@ class XboxClient
         ])->get(self::TITLEHUB_URL."/users/xuid({$xuid})/titles/titlehistory/decoration/detail");
 
         if ($response->failed()) {
+            // V56 class: log the real body, not a bare status — same gap
+            // B19 caught on the OAuth exchange, unfixed here (B27).
+            Log::error('Xbox titlehub request failed', [
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+
             throw new RuntimeException('Xbox titlehub request failed: '.$response->status());
         }
 
@@ -156,6 +163,12 @@ class XboxClient
         ]);
 
         if ($response->failed()) {
+            // V56 class, same as titlehub above (B27).
+            Log::error('Xbox achievements request failed', [
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+            ]);
+
             throw new RuntimeException('Xbox achievements request failed: '.$response->status());
         }
 
