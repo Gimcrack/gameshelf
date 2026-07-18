@@ -130,6 +130,7 @@ export interface LibraryFilterState {
   ratings: string[]
   unplayed: boolean
   showHidden: boolean
+  vr: boolean
   selectedCollection: string
 }
 
@@ -149,6 +150,7 @@ export function defaultLibraryFilterState(): LibraryFilterState {
     ratings: [],
     unplayed: false,
     showHidden: false,
+    vr: false,
     selectedCollection: ''
   }
 }

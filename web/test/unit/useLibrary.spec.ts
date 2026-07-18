@@ -155,6 +155,7 @@ describe('useLibrary', () => {
       ratings: [],
       unplayed: false,
       showHidden: false,
+      vr: false,
       selectedCollection: ''
     })
   })

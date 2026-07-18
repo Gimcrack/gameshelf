@@ -56,10 +56,9 @@ const {
   ratings,
   unplayed,
   showHidden,
+  vr,
   selectedCollection
 } = toRefs(filterState.value)
-// T80: not in V77's persisted set (pre-existing gap) — stays page-local.
-const vr = ref(false)
 
 const filters = computed<LibraryFilters>(() => {
   // V40: bool-backed game-mode labels route through the V32 flag params.
@@ -337,6 +336,7 @@ async function onLogout(): Promise<void> {
             v-model:ratings="ratings"
             v-model:unplayed="unplayed"
             v-model:show-hidden="showHidden"
+            v-model:vr="vr"
             @save="onSaveCollection"
           />
         </div>

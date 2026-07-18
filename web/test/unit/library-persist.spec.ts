@@ -20,6 +20,15 @@ describe('index.vue filter state persistence (SPEC §V77)', () => {
     expect(src).toMatch(/toRefs\(filterState\.value\)/)
     expect(src).not.toMatch(/const q = ref\(/)
     expect(src).not.toMatch(/const selectedCollection = ref\(/)
+    // T82: vr (T80) folded into the same persisted state — no page-local ref.
+    expect(src).not.toMatch(/const vr = ref\(/)
+    expect(src).toMatch(/\bvr\b[\s\S]*?\} = toRefs\(filterState\.value\)/)
+  })
+
+  it('binds v-model:vr on both the static sidebar and the mobile drawer (SPEC §V62/T82)', async () => {
+    const src = await read('../../app/pages/index.vue')
+    const bindings = src.match(/v-model:vr="vr"/g) ?? []
+    expect(bindings.length).toBe(2)
   })
 })
 
