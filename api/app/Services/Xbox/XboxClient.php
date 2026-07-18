@@ -129,6 +129,9 @@ class XboxClient
         $response = Http::withHeaders([
             'Authorization' => "XBL3.0 x={$userHash};{$xstsToken}",
             'x-xbl-contract-version' => '2',
+            // B28: titlehub 400s without this — "Request does not contain
+            // the Accept-Language header, with valid locale value".
+            'Accept-Language' => 'en-US',
         ])->get(self::TITLEHUB_URL."/users/xuid({$xuid})/titles/titlehistory/decoration/detail");
 
         if ($response->failed()) {
@@ -158,6 +161,9 @@ class XboxClient
         $response = Http::withHeaders([
             'Authorization' => "XBL3.0 x={$userHash};{$xstsToken}",
             'x-xbl-contract-version' => '2',
+            // B28: preemptive — same XBL API family as titlehub, which 400s
+            // without this.
+            'Accept-Language' => 'en-US',
         ])->get(self::ACHIEVEMENTS_URL."/users/xuid({$xuid})/achievements", [
             'titleId' => $titleId,
         ]);
