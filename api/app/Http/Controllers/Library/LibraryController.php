@@ -54,11 +54,13 @@ class LibraryController extends Controller
             'coop' => ['sometimes', 'boolean'],
             'local_multiplayer' => ['sometimes', 'boolean'],
             'local_coop' => ['sometimes', 'boolean'],
+            // T80/V76.
+            'vr' => ['sometimes', 'boolean'],
         ]);
 
-        // T27: normalize to real booleans so LibraryQuery's strict equality
-        // against nullable game flags behaves correctly.
-        foreach (['multiplayer', 'coop', 'local_multiplayer', 'local_coop'] as $flag) {
+        // T27/T80: normalize to real booleans so LibraryQuery's strict
+        // equality against nullable game flags behaves correctly.
+        foreach (['multiplayer', 'coop', 'local_multiplayer', 'local_coop', 'vr'] as $flag) {
             if (isset($validated[$flag])) {
                 $validated[$flag] = filter_var($validated[$flag], FILTER_VALIDATE_BOOLEAN);
             }

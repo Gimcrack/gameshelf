@@ -529,6 +529,27 @@ class LibraryTest extends TestCase
     }
 
     /**
+     * T80/V76: null (best-effort miss) matches neither an explicit true nor
+     * false query, mirrors multiplayer flags.
+     */
+    public function test_filters_by_vr(): void
+    {
+        $steam = $this->connection('steam');
+        $this->own($steam, $this->game('VR Game', ['vr_supported' => true]), 10);
+        $this->own($steam, $this->game('Flatscreen Game', ['vr_supported' => false]), 10);
+        $this->own($steam, $this->game('Unchecked Game'), 10);
+
+        $this->assertSame(
+            ['VR Game'],
+            array_column($this->getJson('/api/library?vr=1')->json(), 'title'),
+        );
+        $this->assertSame(
+            ['Flatscreen Game'],
+            array_column($this->getJson('/api/library?vr=0')->json(), 'title'),
+        );
+    }
+
+    /**
      * T28: title substring, case-insensitive.
      */
     public function test_filters_by_title_search(): void

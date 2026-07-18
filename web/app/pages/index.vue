@@ -52,6 +52,7 @@ const deckStatuses = ref<DeckStatus[]>([])
 const esrb = ref<string[]>([])
 const libraryStatuses = ref<LibraryStatus[]>([])
 const ratings = ref<string[]>([])
+const vr = ref(false)
 
 const filters = computed<LibraryFilters>(() => {
   // V40: bool-backed game-mode labels route through the V32 flag params.
@@ -73,6 +74,7 @@ const filters = computed<LibraryFilters>(() => {
     ...(esrb.value.length ? { esrb: esrb.value } : {}),
     ...(libraryStatuses.value.length ? { libraryStatus: libraryStatuses.value } : {}),
     ...(ratings.value.length ? { rating: ratings.value } : {}),
+    ...(vr.value ? { vr: true } : {}),
     // T44: a selected collection expands server-side; explicit filters above
     // still win (LibraryController.resolveCollection).
     ...(selectedCollection.value ? { collection: selectedCollection.value } : {})
@@ -192,6 +194,7 @@ async function onLogout(): Promise<void> {
         v-model:ratings="ratings"
         v-model:unplayed="unplayed"
         v-model:show-hidden="showHidden"
+        v-model:vr="vr"
         @save="onSaveCollection"
       />
 

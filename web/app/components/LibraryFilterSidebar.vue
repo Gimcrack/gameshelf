@@ -25,6 +25,8 @@ const libraryStatuses = defineModel<LibraryStatus[]>('libraryStatuses', { defaul
 const ratings = defineModel<string[]>('ratings', { default: () => [] })
 const unplayed = defineModel<boolean>('unplayed', { default: false })
 const showHidden = defineModel<boolean>('showHidden', { default: false })
+// T80/V76: distinct IGDB field from game_modes, ⊥ overlap → standalone checkbox.
+const vr = defineModel<boolean>('vr', { default: false })
 
 // T36: static list — no facets source for deck status (I.api).
 const DECK_STATUSES: DeckStatus[] = ['unknown', 'unsupported', 'playable', 'verified']
@@ -64,7 +66,8 @@ const hasActiveFilters = computed(
     esrb.value.length > 0 ||
     libraryStatuses.value.length > 0 ||
     ratings.value.length > 0 ||
-    unplayed.value
+    unplayed.value ||
+    vr.value
 )
 </script>
 
@@ -93,6 +96,10 @@ const hasActiveFilters = computed(
       <label class="flex items-center gap-2 pb-0.5">
         <input v-model="showHidden" type="checkbox" class="accent-teal-500" />
         Show hidden
+      </label>
+      <label class="flex items-center gap-2 pb-0.5">
+        <input v-model="vr" type="checkbox" class="accent-teal-500" />
+        VR
       </label>
     </div>
 

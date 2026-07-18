@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'igdb_id', 'title', 'cover_url', 'genres', 'themes', 'keywords', 'game_modes',
     'release_date', 'time_to_beat_minutes',
-    'esrb_rating', 'multiplayer', 'coop', 'local_multiplayer', 'local_coop',
+    'esrb_rating', 'multiplayer', 'coop', 'local_multiplayer', 'local_coop', 'vr_supported',
     'igdb_synced_at',
 ])]
 class Game extends Model
@@ -31,6 +31,7 @@ class Game extends Model
             'coop' => 'boolean',
             'local_multiplayer' => 'boolean',
             'local_coop' => 'boolean',
+            'vr_supported' => 'boolean',
             'igdb_synced_at' => 'datetime',
         ];
     }

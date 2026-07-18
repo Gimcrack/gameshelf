@@ -39,11 +39,14 @@ class IgdbClient
     // shape (verified live). The old flat `category`/`rating` field names
     // don't exist; IGDB drops unknown fields silently (no error), which is
     // exactly how this went unnoticed.
+    // T80/V76: player_perspectives rides the same request too — VR is one of
+    // its values ("Virtual Reality"), no extra IGDB call.
     private const CANONICAL_FIELDS = 'name,cover.url,genres.name,themes.name,keywords.name,game_modes.name,'
         .'first_release_date,age_ratings.organization,age_ratings.rating_category.rating,'
         .'multiplayer_modes.campaigncoop,multiplayer_modes.dropin,multiplayer_modes.lancoop,'
         .'multiplayer_modes.offlinecoop,multiplayer_modes.offlinemax,multiplayer_modes.onlinecoop,'
-        .'multiplayer_modes.onlinemax,multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline';
+        .'multiplayer_modes.onlinemax,multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline,'
+        .'player_perspectives.name';
 
     /** §I discover browse sort vocabulary → IGDB order clauses. */
     private const BROWSE_SORTS = [

@@ -30,6 +30,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     coop: null,
     local_multiplayer: null,
     local_coop: null,
+    vr_supported: null,
     status: 'unplayed',
     status_declared: false,
     tags: [],
@@ -122,6 +123,12 @@ describe('buildLibraryQuery', () => {
     expect(buildLibraryQuery({ collection: 'unplayed' })).toBe('collection=unplayed')
     expect(buildLibraryQuery({ collection: '42' })).toBe('collection=42')
   })
+
+  // T80: mirrors multiplayer/coop bool-flag mapping.
+  it('maps vr to vr=1', () => {
+    expect(buildLibraryQuery({ vr: true })).toBe('vr=1')
+    expect(buildLibraryQuery({ vr: false })).toBe('')
+  })
 })
 
 // T44/V44: preset serialisation for "Save as collection".
@@ -140,6 +147,7 @@ describe('libraryFiltersToPreset', () => {
       rating: ['5'],
       multiplayer: true,
       localCoop: true,
+      vr: true,
       q: 'witch'
     })
 
@@ -156,6 +164,7 @@ describe('libraryFiltersToPreset', () => {
       rating: ['5'],
       multiplayer: true,
       local_coop: true,
+      vr: true,
       q: 'witch'
     })
   })

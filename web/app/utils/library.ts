@@ -34,6 +34,8 @@ export interface LibraryEntry {
   coop: boolean | null
   local_multiplayer: boolean | null
   local_coop: boolean | null
+  // T80/V76: null = not yet fetched, distinct from false.
+  vr_supported: boolean | null
   status: GameStatus
   status_declared: boolean
   tags: string[]
@@ -101,6 +103,7 @@ export interface LibraryFilters {
   coop?: boolean
   localMultiplayer?: boolean
   localCoop?: boolean
+  vr?: boolean
   q?: string
   // T44: system slug | custom collection id — the API expands a saved
   // filter preset, with explicit params winning (LibraryController).
@@ -140,6 +143,7 @@ export function buildLibraryQuery(filters: LibraryFilters): string {
   if (filters.coop) params.set('coop', '1')
   if (filters.localMultiplayer) params.set('local_multiplayer', '1')
   if (filters.localCoop) params.set('local_coop', '1')
+  if (filters.vr) params.set('vr', '1')
   if (filters.q) params.set('q', filters.q)
   if (filters.collection) params.set('collection', filters.collection)
 
@@ -174,6 +178,7 @@ export function libraryFiltersToPreset(filters: LibraryFilters): Record<string, 
   if (filters.coop) preset.coop = true
   if (filters.localMultiplayer) preset.local_multiplayer = true
   if (filters.localCoop) preset.local_coop = true
+  if (filters.vr) preset.vr = true
   if (filters.q) preset.q = filters.q
 
   return preset

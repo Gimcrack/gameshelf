@@ -25,7 +25,7 @@ class CollectionController extends Controller
         'sort', 'order', 'platform', 'genre', 'theme', 'keyword', 'game_mode',
         'status', 'tags', 'unplayed', 'playtime_min', 'playtime_max',
         'deck_status', 'esrb', 'multiplayer', 'coop', 'local_multiplayer',
-        'local_coop', 'q', 'library_status', 'rating',
+        'local_coop', 'q', 'library_status', 'rating', 'vr',
     ];
 
     public function index(Request $request): JsonResponse

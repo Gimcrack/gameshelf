@@ -395,6 +395,8 @@ class LibraryQuery
             'coop' => $game->coop,
             'local_multiplayer' => $game->local_multiplayer,
             'local_coop' => $game->local_coop,
+            // T80/V76: null = not yet fetched, distinct from false.
+            'vr_supported' => $game->vr_supported,
         ];
     }
 
@@ -493,6 +495,11 @@ class LibraryQuery
             ))
             ->when(isset($filters['local_coop']), fn (Collection $c) => $c->filter(
                 fn (array $e) => $e['local_coop'] === $filters['local_coop'],
+            ))
+            // T80/V76: mirrors multiplayer-flag equality — null (best-effort
+            // miss) matches neither an explicit true nor false query.
+            ->when(isset($filters['vr']), fn (Collection $c) => $c->filter(
+                fn (array $e) => $e['vr_supported'] === $filters['vr'],
             ))
             // V29: manual collection membership, synthesized internally by
             // LibraryController::resolveCollection — never a public param.

@@ -46,6 +46,7 @@ class IgdbGameAttributes
                 : null,
             'esrb_rating' => self::esrbRating($igdb['age_ratings'] ?? []),
             ...self::multiplayerFlags($igdb['multiplayer_modes'] ?? []),
+            'vr_supported' => self::vrSupported($igdb['player_perspectives'] ?? []),
         ];
     }
 
@@ -95,5 +96,22 @@ class IgdbGameAttributes
             'local_multiplayer' => $localMultiplayer,
             'local_coop' => $localCoop,
         ];
+    }
+
+    /**
+     * V76: mirrors multiplayerFlags — a successful call with no matching
+     * value means IGDB reported no VR perspective, i.e. false, not null.
+     *
+     * @param  list<array<string, mixed>>  $perspectives
+     */
+    private static function vrSupported(array $perspectives): bool
+    {
+        foreach ($perspectives as $perspective) {
+            if (($perspective['name'] ?? null) === 'Virtual Reality') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

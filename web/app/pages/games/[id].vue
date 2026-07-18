@@ -239,7 +239,10 @@ async function onSave(): Promise<void> {
         <p v-if="fetchError" class="mb-4 text-sm text-rose-400">{{ fetchError }}</p>
         <p v-if="wishlistError" class="mb-4 text-sm text-rose-400">{{ wishlistError }}</p>
 
-        <div v-if="entry.esrb_rating || entry.multiplayer || entry.coop" class="mb-4 flex flex-wrap gap-1.5">
+        <div
+          v-if="entry.esrb_rating || entry.multiplayer || entry.coop || entry.vr_supported"
+          class="mb-4 flex flex-wrap gap-1.5"
+        >
           <span
             v-if="entry.esrb_rating"
             class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
@@ -269,6 +272,12 @@ async function onSave(): Promise<void> {
             class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
           >
             Local co-op
+          </span>
+          <span
+            v-if="entry.vr_supported"
+            class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-slate-300"
+          >
+            VR
           </span>
         </div>
 

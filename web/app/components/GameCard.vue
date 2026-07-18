@@ -114,6 +114,12 @@ function onAddToCollection(): void {
         >
           🏆 {{ entry.achievements_summary.unlocked }}/{{ entry.achievements_summary.total }}
         </li>
+        <li
+          v-if="entry.vr_supported"
+          class="rounded bg-slate-800 px-1.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-teal-300"
+        >
+          VR
+        </li>
       </ul>
       <p v-if="entry.genres.length" class="text-xs text-slate-500">{{ entry.genres.join(', ') }}</p>
       <div class="mt-1.5 flex flex-wrap gap-1.5">

@@ -77,6 +77,7 @@ class GameMatcherTest extends TestCase
                 'splitscreen' => true,
                 'splitscreenonline' => false,
             ]],
+            'player_perspectives' => [['name' => 'Third person'], ['name' => 'Virtual Reality']],
         ];
     }
 
@@ -104,6 +105,8 @@ class GameMatcherTest extends TestCase
         // offlinecoop present → local_coop true.
         $this->assertTrue($game->local_coop);
         $this->assertTrue($game->local_multiplayer);
+        // T80/V76: 'Virtual Reality' present among player_perspectives.
+        $this->assertTrue($game->vr_supported);
         // V50: matching stamps the freshness clock (T51 24h gate).
         $this->assertNotNull($game->igdb_synced_at);
     }
@@ -126,6 +129,8 @@ class GameMatcherTest extends TestCase
         $this->assertStringContainsString('age_ratings.rating_category.rating', $body);
         $this->assertStringNotContainsString('age_ratings.category', $body);
         $this->assertStringNotContainsString('age_ratings.rating,', $body);
+        // T80/V76: same field-name-silently-dropped class as V37 — pin it.
+        $this->assertStringContainsString('player_perspectives.name', $body);
     }
 
     /**
@@ -162,9 +167,10 @@ class GameMatcherTest extends TestCase
     }
 
     /**
-     * V32/V33: no age_ratings/multiplayer_modes data → esrb_rating stays
-     * null (unrated), multiplayer flags derive to false (IGDB successfully
-     * reported no multiplayer data), never a placeholder.
+     * V32/V33/V76: no age_ratings/multiplayer_modes/player_perspectives data
+     * → esrb_rating stays null (unrated), multiplayer flags + vr_supported
+     * derive to false (IGDB successfully reported no matching data), never
+     * a placeholder.
      */
     public function test_no_ratings_or_multiplayer_data_derives_null_and_false(): void
     {
@@ -183,6 +189,27 @@ class GameMatcherTest extends TestCase
         $this->assertFalse($game->coop);
         $this->assertFalse($game->local_multiplayer);
         $this->assertFalse($game->local_coop);
+        $this->assertFalse($game->vr_supported);
+    }
+
+    /**
+     * T80/V76: player_perspectives present but without "Virtual Reality" →
+     * false, not null — distinct from the never-fetched case.
+     */
+    public function test_non_vr_perspectives_derives_false(): void
+    {
+        $this->fakeIgdb([[
+            'id' => 91,
+            'name' => 'Flatscreen Only',
+            'genres' => [],
+            'player_perspectives' => [['name' => 'First person'], ['name' => 'Third person']],
+        ]]);
+        [, $game, $connection] = $this->provisionalOwnedGame('Flatscreen Only', '91');
+
+        app(GameMatcher::class)->matchConnection($connection);
+
+        $game->refresh();
+        $this->assertFalse($game->vr_supported);
     }
 
     /**

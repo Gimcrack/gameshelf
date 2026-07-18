@@ -112,7 +112,7 @@ class CollectionsTest extends TestCase
             'deck_status' => ['verified'], 'esrb' => ['M', 'none'],
             'multiplayer' => true, 'coop' => true, 'local_multiplayer' => true,
             'local_coop' => true, 'q' => 'witch', 'library_status' => ['owned'],
-            'rating' => ['5', 'none'],
+            'rating' => ['5', 'none'], 'vr' => true,
         ];
 
         $response = $this->postJson('/api/collections', [
